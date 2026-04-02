@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skydle HQ</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <div id="hud">
+    <div id="flower-counter">
+      <span id="flower-icon">🌸</span>
+      <span id="flower-count">0</span>
+      <span id="flowers-per-sec">(0/s)</span>
+    </div>
+  </div>
+
+  <div id="placement-banner" class="hidden">
+    <span class="drone-emoji">🛸</span>
+    Click a <strong>purple tile</strong> to place your drone
+    <button id="cancel-placement">✕ Cancel</button>
+  </div>
+
+  <div id="shop-toggle">🛒 Shop</div>
+
+  <div id="shop" class="hidden">
+    <div id="shop-header">
+      <div id="shop-tabs">
+        <button class="shop-tab active" data-tab="drones">Drones</button>
+        <button class="shop-tab" data-tab="upgrades">Map</button>
+      </div>
+      <button id="shop-close">✕</button>
+    </div>
+
+    <div id="tab-drones" class="shop-tab-content">
+      <div id="shop-items">
+        <div class="shop-item">
+          <div class="item-icon">🔴</div>
+          <div class="item-info">
+            <div class="item-name">Skydio R1</div>
+            <div class="item-desc">Flies to flowers and collects them automatically</div>
+            <div class="item-owned" id="drones-owned">Owned: 0</div>
+          </div>
+          <button class="buy-btn" id="buy-r1">
+            <span class="cost" id="r1-cost">20 🌸</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-upgrades" class="shop-tab-content hidden">
+
+      <div id="shop-items">
+        <div class="shop-item">
+          <div class="item-icon">⚡</div>
+          <div class="item-info">
+            <div class="item-name">Faster Spawns</div>
+            <div class="item-desc">Flowers appear more frequently</div>
+            <div class="item-owned" id="spawn-level">Level 0 — 8s interval</div>
+          </div>
+          <button class="buy-btn" id="buy-spawn-speed">
+            <span class="cost" id="spawn-speed-cost">25 🌸</span>
+          </button>
+        </div>
+        <div class="shop-item">
+          <div class="item-icon">🌺</div>
+          <div class="item-info">
+            <div class="item-name">Mega Flowers</div>
+            <div class="item-desc">Chance for flowers worth 5+ each</div>
+            <div class="item-owned" id="mega-level">Level 0 — 0% chance</div>
+          </div>
+          <button class="buy-btn" id="buy-mega-flower">
+            <span class="cost" id="mega-flower-cost">40 🌸</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="drone-popup" class="hidden">
+    <div id="drone-popup-header">
+      <span id="drone-popup-title">R1 #1</span>
+      <button id="drone-popup-close">✕</button>
+    </div>
+    <div id="drone-popup-status"></div>
+    <div id="drone-popup-upgrades"></div>
+  </div>
+
+  <div id="upgrade-badges">
+    <div class="badge hidden" id="badge-spawn">
+      ⚡ <span id="badge-spawn-val">0</span>
+      <div class="badge-tip" id="badge-spawn-tip">Faster Spawns Lv.0</div>
+    </div>
+    <div class="badge hidden" id="badge-mega">
+      🌺 <span id="badge-mega-val">0</span>
+      <div class="badge-tip" id="badge-mega-tip">Mega Flowers Lv.0</div>
+    </div>
+    <div class="badge hidden" id="badge-drones">
+      🔴 <span id="badge-drones-val">0</span>
+      <div class="badge-tip" id="badge-drones-tip">Drones: 0</div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>

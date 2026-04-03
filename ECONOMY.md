@@ -24,119 +24,156 @@ Mega flowers multiply the base by 5× on top of that. Income scales with:
 
 At max upgrades (value 100, multiplier 5×), each regular flower yields 500 flowers. Mega flowers yield 2,500.
 
-## Progression Tiers
+## Price Scaling — S-Curve Model
 
-### Tier 1: The Hook (0–3 min)
+All 25-level upgrades use an **S-curve** for per-level price scaling `[early, peak, late]` = `[1.5, 2.0, 1.2]`:
 
-Cheap upgrades that immediately boost click value. Flower Value uses a **power curve** (`t^1.5`) with a guaranteed `+1` floor so every early level *feels* like progress.
+- **Early levels**: ×1.5 per level (+50%) — cheap enough to hook the player
+- **Mid levels**: ×2.0 per level (+100%) — steep ramp matches income acceleration
+- **Late levels**: ×1.2 per level (+20%) — levels off as income gains taper
 
-| Upgrade | Base Cost | Scale | First 3 Levels |
-|---------|-----------|-------|-----------------|
-| Flower Value | 5 | 1.25× | 5, 6, 8 |
-| Multiplier | 8 | 1.22× | 8, 10, 12 |
-| First R1 Drone | 12 | — | 12 |
+The effective multiplier at each level is:
 
-After ~25 flowers spent: each click yields 2–3 flowers instead of 1. The player immediately sees numbers grow.
+```
+t = level / maxLevel
+bell = sin(π × t)
+scale = (t ≤ 0.5) ? early + (peak − early) × bell
+                    : late  + (peak − late)  × bell
+```
 
-### Tier 2: Fleet Building (3–15 min)
+## Raw Prices — All Upgrades
 
-Balance buying drones vs. map upgrades. Drones are slow early (10s cooldown + travel + 4.3s harvest ≈ 20s cycle).
+### Flower Value (25 levels, base 5)
 
-| Upgrade | Base Cost | Scale | Lv5 Cost | Lv10 Cost |
-|---------|-----------|-------|----------|-----------|
-| Faster Spawns | 15 | 1.16× | 27 | 62 |
-| Batch Spawns | 12 | 1.18× | 24 | 63 |
-| R1 Drones | 12 | 1.55× | 68 | — |
-| Propeller+ | 25 | 1.6× | 105 | — |
-| Harvester+ | 30 | 1.6× | 126 | — |
+| Level | Cost | Level | Cost | Level | Cost |
+|-------|------|-------|------|-------|------|
+| 1 | 5 | 10 | 712 | 19 | 285,327 |
+| 2 | 7 | 11 | 1,406 | 20 | 498,648 |
+| 3 | 11 | 12 | 2,799 | 21 | 832,855 |
+| 4 | 18 | 13 | 5,595 | 22 | 1,320,410 |
+| 5 | 31 | 14 | 11,181 | 23 | 1,973,352 |
+| 6 | 55 | 15 | 22,203 | 24 | 2,760,624 |
+| 7 | 101 | 16 | 43,536 | 25 | 3,589,547 |
+| 8 | 190 | 17 | 83,757 | | |
+| 9 | 365 | 18 | 157,083 | | |
 
-### Tier 3: Scaling (15–45 min)
+### Multiplier (25 levels, base 8)
 
-Higher value/multiplier levels, drone fleet optimization.
+| Level | Cost | Level | Cost | Level | Cost |
+|-------|------|-------|------|-------|------|
+| 1 | 8 | 10 | 1,233 | 19 | 494,208 |
+| 2 | 12 | 11 | 2,435 | 20 | 863,696 |
+| 3 | 19 | 12 | 4,848 | 21 | 1,442,569 |
+| 4 | 31 | 13 | 9,691 | 22 | 2,287,053 |
+| 5 | 53 | 14 | 19,366 | 23 | 3,417,999 |
+| 6 | 95 | 15 | 38,457 | 24 | 4,781,616 |
+| 7 | 175 | 16 | 75,408 | 25 | 6,217,375 |
+| 8 | 329 | 17 | 145,074 | | |
+| 9 | 632 | 18 | 272,080 | | |
 
-| Upgrade | Lv15 Cost | Lv20 Cost | Lv25 Cost |
-|---------|-----------|-----------|-----------|
-| Flower Value | 46 | 115 | 286 |
-| Multiplier | 57 | 160 | 452 |
-| Faster Spawns | 90 | 193 | 414 |
-| Batch Spawns | 92 | 216 | 508 |
+### Faster Spawns (25 levels, base 15)
 
-### Tier 4: Late Game (45–90 min)
+| Level | Cost | Level | Cost | Level | Cost |
+|-------|------|-------|------|-------|------|
+| 1 | 15 | 10 | 2,479 | 19 | 993,972 |
+| 2 | 23 | 11 | 4,897 | 20 | 1,737,102 |
+| 3 | 37 | 12 | 9,750 | 21 | 2,901,356 |
+| 4 | 62 | 13 | 19,490 | 22 | 4,599,818 |
+| 5 | 107 | 14 | 38,949 | 23 | 6,874,426 |
+| 6 | 191 | 15 | 77,346 | 24 | 9,616,991 |
+| 7 | 351 | 16 | 151,663 | 25 | 12,504,652 |
+| 8 | 661 | 17 | 291,778 | | |
+| 9 | 1,270 | 18 | 547,218 | | |
 
-Mega flowers and final map upgrade levels become the focus.
+### Batch Spawns (25 levels, base 12)
 
-| Upgrade | Cost Progression |
-|---------|-----------------|
-| Mega Flowers (5 lvls) | 120 → 300 → 750 → 1,875 → 4,688 |
-| Multiplier Lv21–25 | 535 → 1,612 |
+| Level | Cost | Level | Cost | Level | Cost |
+|-------|------|-------|------|-------|------|
+| 1 | 12 | 10 | 1,921 | 19 | 770,079 |
+| 2 | 18 | 11 | 3,794 | 20 | 1,345,819 |
+| 3 | 29 | 12 | 7,554 | 21 | 2,247,824 |
+| 4 | 48 | 13 | 15,100 | 22 | 3,563,706 |
+| 5 | 83 | 14 | 30,176 | 23 | 5,325,957 |
+| 6 | 148 | 15 | 59,924 | 24 | 7,450,757 |
+| 7 | 272 | 16 | 117,501 | 25 | 9,687,970 |
+| 8 | 512 | 17 | 226,055 | | |
+| 9 | 984 | 18 | 423,957 | | |
 
-### Tier 5: Endgame (90–120+ min)
+### Mega Flowers (5 levels, explicit tiers)
 
-Massive one-time purchases that require sustained income.
+| Level | Cost |
+|-------|------|
+| 1 | 120 |
+| 2 | 800 |
+| 3 | 5,000 |
+| 4 | 50,000 |
+| 5 | 200,000 |
 
-| Upgrade | Cost | Effect |
-|---------|------|--------|
-| Drone Dock | **12,000** | 1s cooldown for all R1s (was 10s) |
-| Ultimate R1 | **8,000** / drone | 3× speed, 3× harvest, 3× cooldown + rainbow holo |
+### R1 Drones (×1.75 flat scale)
 
-## Upgrade Reference
+| Drone # | Cost |
+|---------|------|
+| 1 | 12 |
+| 2 | 21 |
+| 3 | 36 |
+| 4 | 63 |
+| 5 | 110 |
+| 6 | 192 |
+| 7 | 336 |
+| 8 | 588 |
+| 9 | 1,029 |
+| 10 | 1,800 |
 
-### Map Upgrades (Upgrades → Map tab)
+### Propeller+ (5 levels, ×2.0 flat scale)
 
-| Upgrade | Max Level | Effect | Base | Scale |
-|---------|-----------|--------|------|-------|
-| Flower Value | 25 | Base value 1 → 100 per flower (power curve `t^1.5`) | 5 | 1.25× |
-| Multiplier | 25 | Income multiplier 1× → 5× | 8 | 1.22× |
-| Faster Spawns | 25 | Spawn interval 8s → 2s | 15 | 1.16× |
-| Batch Spawns | 25 | Flowers per cycle 1 → up to 15 (probabilistic) | 12 | 1.18× |
-| Mega Flowers | 5 | Mega chance 0% → 50% (each mega = 5× value) | 120 | 2.5× |
+| Level | Cost |
+|-------|------|
+| 1 | 25 |
+| 2 | 50 |
+| 3 | 100 |
+| 4 | 200 |
+| 5 | 400 |
 
-### Drone Upgrades (Upgrades → Drones tab)
+### Harvester+ (8 levels, ×2.0 flat scale)
 
-| Upgrade | Max Level | Effect | Base | Scale |
-|---------|-----------|--------|------|-------|
-| Propeller+ | 5 | Flight speed +1.5/level (all R1s) | 25 | 1.6× |
-| Harvester+ | 8 | Harvest time −0.5s/level, min 0.5s (all R1s) | 30 | 1.6× |
-| Drone Dock | 1 (one-time) | Cooldown → 1s for all R1s | 12,000 | — |
+| Level | Cost |
+|-------|------|
+| 1 | 30 |
+| 2 | 60 |
+| 3 | 120 |
+| 4 | 240 |
+| 5 | 480 |
+| 6 | 960 |
+| 7 | 1,920 |
+| 8 | 3,840 |
 
-### Per-Drone Upgrades (click drone's dock tile)
+### Drone Dock (one-time)
 
-| Upgrade | Cost | Effect |
-|---------|------|--------|
-| Ultimate R1 | 8,000 | 3× all stats + rainbow holo visual |
+| Cost |
+|------|
+| 12,000 |
 
-### Drones
+### Ultimate R1 (per drone, one-time each)
 
-| Stat | Base Value |
-|------|-----------|
-| Buy price | 12 (×1.55 each) |
-| Flight speed | 2.1 |
-| Harvest time | 4.3s |
-| Cooldown | 10s (1s with dock) |
-
-Drone costs: 12, 18, 28, 44, 68, 105, 163, 253, ...
+| Cost |
+|------|
+| 8,000 |
 
 ## Flower Value — Power Curve Progression
 
-Uses `value = max(1 + level, round(1 + 99 × (level/25)^1.5))` to guarantee every level gives at least +1, with gains accelerating into mid/late game.
+Uses `value = max(1 + level, round(1 + 99 × (level/25)^1.5))` to guarantee every level gives at least +1.
 
-| Level | Value/Flower | Δ | Level | Value/Flower | Δ |
-|-------|-------------|---|-------|-------------|---|
-| 0 | 1 | — | 13 | 38 | +4 |
-| 1 | 2 | +1 | 14 | 42 | +4 |
-| 2 | 3 | +1 | 15 | 47 | +5 |
-| 3 | 5 | +2 | 16 | 52 | +5 |
-| 4 | 7 | +2 | 17 | 57 | +5 |
-| 5 | 10 | +3 | 18 | 61 | +4 |
-| 6 | 13 | +3 | 19 | 67 | +6 |
-| 7 | 16 | +3 | 20 | 72 | +5 |
-| 8 | 19 | +3 | 21 | 77 | +5 |
-| 9 | 22 | +3 | 22 | 83 | +6 |
-| 10 | 26 | +4 | 23 | 88 | +5 |
-| 11 | 30 | +4 | 24 | 94 | +6 |
-| 12 | 34 | +4 | 25 | 100 | +6 |
-
-Early levels (+1, +1, +2, +2) make each purchase feel tangible. The multiplier upgrade compounds on top, so by mid-game a single Flower Value level can meaningfully shift income.
+| Level | Value | Level | Value | Level | Value |
+|-------|-------|-------|-------|-------|-------|
+| 0 | 1 | 9 | 22 | 18 | 61 |
+| 1 | 2 | 10 | 26 | 19 | 67 |
+| 2 | 3 | 11 | 30 | 20 | 72 |
+| 3 | 5 | 12 | 34 | 21 | 77 |
+| 4 | 7 | 13 | 38 | 22 | 83 |
+| 5 | 10 | 14 | 42 | 23 | 88 |
+| 6 | 13 | 15 | 47 | 24 | 94 |
+| 7 | 16 | 16 | 52 | 25 | 100 |
+| 8 | 19 | 17 | 57 | | |
 
 ## Batch Spawns — Probabilistic Model
 
@@ -153,18 +190,51 @@ Levels 3–25: guaranteed minimum of 3, then each of 12 extra slots (up to 15 to
 | 15 | 3 | ~7.6 | 15 |
 | 25 | 3 | ~12.8 | 15 |
 
-## Max Flowers on Map
+## Upgrade Reference
 
-Flowers share a single cap based on grid size. No more spawn when at capacity.
+### Map Upgrades (Upgrades → Map tab)
+
+| Upgrade | Max Level | Effect | Base Cost | Scale |
+|---------|-----------|--------|-----------|-------|
+| Flower Value | 25 | Base value 1 → 100 per flower (power curve `t^1.5`) | 5 | S-curve [1.5, 2.0, 1.2] |
+| Multiplier | 25 | Income multiplier 1× → 5× | 8 | S-curve [1.5, 2.0, 1.2] |
+| Faster Spawns | 25 | Spawn interval 3.5s → 0.8s | 15 | S-curve [1.5, 2.0, 1.2] |
+| Batch Spawns | 25 | Flowers per cycle 1 → up to 15 (probabilistic) | 12 | S-curve [1.5, 2.0, 1.2] |
+| Mega Flowers | 5 | Mega chance 0% → 50% (each mega = 5× value) | 120 | Explicit tiers |
+
+### Drone Upgrades (Upgrades → Drones tab)
+
+| Upgrade | Max Level | Effect | Base Cost | Scale |
+|---------|-----------|--------|-----------|-------|
+| Propeller+ | 5 | Flight speed +1.5/level (all R1s) | 25 | ×2.0 flat |
+| Harvester+ | 8 | Harvest time −0.5s/level, min 0.5s (all R1s) | 30 | ×2.0 flat |
+| Drone Dock | 1 | Cooldown → 1s for all R1s | 12,000 | — |
+
+### Per-Drone Upgrades (click drone's dock tile)
+
+| Upgrade | Cost | Effect |
+|---------|------|--------|
+| Ultimate R1 | 8,000 | 3× all stats + rainbow holo visual |
+
+### Drones
+
+| Stat | Base Value |
+|------|-----------|
+| Buy price | 12 (×1.75 each) |
+| Flight speed | 2.1 |
+| Harvest time | 4.3s |
+| Cooldown | 10s (1s with dock) |
+
+## Max Flowers on Map
 
 | Grid Size | Max Flowers |
 |-----------|-------------|
-| 10×10 | 50 |
-| 11×11 | 65 |
-| 12×12 | 80 |
-| 13×13 | 100 |
-| 14×14 | 125 |
-| 15×15 | 150 |
+| 10×10 | 70 |
+| 11×11 | 90 |
+| 12×12 | 110 |
+| 13×13 | 135 |
+| 14×14 | 165 |
+| 15×15 | 200 |
 
 ## Dev & Speed Modes
 

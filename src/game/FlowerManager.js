@@ -44,6 +44,14 @@ function createFlower(color, isMega) {
   center.position.y = 0.62 * s;
   group.add(center);
 
+  const hitRadius = 0.94 * s;
+  const hitSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(hitRadius, 6, 6),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  hitSphere.position.y = 0.4 * s;
+  group.add(hitSphere);
+
   if (isMega) {
     const glow = new THREE.Mesh(
       new THREE.CylinderGeometry(0.4, 0.4, 0.05, 8),

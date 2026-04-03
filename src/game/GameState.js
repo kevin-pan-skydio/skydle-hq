@@ -35,7 +35,7 @@ export class GameState {
       'spawn-batch': dev ? d : FLOWERS.batchUpgrade.price.base,
       'flower-value': dev ? d : FLOWERS.valueUpgrade.price.base,
       'flower-multi': dev ? d : FLOWERS.multiplierUpgrade.price.base,
-      'mega-flower': dev ? d : FLOWERS.megaUpgrade.price.base,
+      'mega-flower': dev ? d : (FLOWERS.megaUpgrade.price.levels || [FLOWERS.megaUpgrade.price.base])[0],
     };
 
     this._priceScales = {
@@ -46,7 +46,6 @@ export class GameState {
       'spawn-batch': FLOWERS.batchUpgrade.price.scale,
       'flower-value': FLOWERS.valueUpgrade.price.scale,
       'flower-multi': FLOWERS.multiplierUpgrade.price.scale,
-      'mega-flower': FLOWERS.megaUpgrade.price.scale,
     };
 
     this._listeners = [];
@@ -79,17 +78,29 @@ export class GameState {
     return this.flowers >= (this.prices[item] || Infinity);
   }
 
-  _scalePrice(key) {
+  _scalePrice(key, level, maxLevel) {
     if (this.devMode) return;
     const scale = this._priceScales[key];
-    if (scale) this.prices[key] = Math.floor(this.prices[key] * scale);
+    if (!scale) return;
+    const effective = this._effectiveScale(scale, level, maxLevel);
+    this.prices[key] = Math.floor(this.prices[key] * effective);
+  }
+
+  _effectiveScale(scale, level, maxLevel) {
+    if (typeof scale === 'number') return scale;
+    const [low, peak, late] = scale;
+    const t = level / Math.max(maxLevel, 1);
+    const bell = Math.sin(t * Math.PI);
+    return t <= 0.5
+      ? low + (peak - low) * bell
+      : late + (peak - late) * bell;
   }
 
   buyDrone() {
     const cost = this.prices['r1-drone'];
     if (!this.spendFlowers(cost)) return false;
     this.dronesOwned++;
-    this._scalePrice('r1-drone');
+    this._scalePrice('r1-drone', this.dronesOwned);
     this._notify();
     return true;
   }
@@ -108,7 +119,7 @@ export class GameState {
     const cost = this.prices['drone-speed'];
     if (!this.spendFlowers(cost)) return false;
     this.droneSpeedLevel++;
-    this._scalePrice('drone-speed');
+    this._scalePrice('drone-speed', this.droneSpeedLevel, UPG.propeller.maxLevel);
     this._notify();
     return true;
   }
@@ -118,7 +129,7 @@ export class GameState {
     const cost = this.prices['drone-harvest'];
     if (!this.spendFlowers(cost)) return false;
     this.droneHarvestLevel++;
-    this._scalePrice('drone-harvest');
+    this._scalePrice('drone-harvest', this.droneHarvestLevel, UPG.harvester.maxLevel);
     this._notify();
     return true;
   }
@@ -129,7 +140,7 @@ export class GameState {
     const cost = this.prices['spawn-speed'];
     if (!this.spendFlowers(cost)) return false;
     this.spawnSpeedLevel++;
-    this._scalePrice('spawn-speed');
+    this._scalePrice('spawn-speed', this.spawnSpeedLevel, FLOWERS.spawnUpgrade.maxLevel);
     this._notify();
     return true;
   }
@@ -144,7 +155,7 @@ export class GameState {
     const cost = this.prices['spawn-batch'];
     if (!this.spendFlowers(cost)) return false;
     this.spawnBatchLevel++;
-    this._scalePrice('spawn-batch');
+    this._scalePrice('spawn-batch', this.spawnBatchLevel, FLOWERS.batchUpgrade.maxLevel);
     this._notify();
     return true;
   }
@@ -185,7 +196,7 @@ export class GameState {
     const cost = this.prices['flower-value'];
     if (!this.spendFlowers(cost)) return false;
     this.flowerValueLevel++;
-    this._scalePrice('flower-value');
+    this._scalePrice('flower-value', this.flowerValueLevel, FLOWERS.valueUpgrade.maxLevel);
     this._notify();
     return true;
   }
@@ -207,7 +218,7 @@ export class GameState {
     const cost = this.prices['flower-multi'];
     if (!this.spendFlowers(cost)) return false;
     this.flowerMultiplierLevel++;
-    this._scalePrice('flower-multi');
+    this._scalePrice('flower-multi', this.flowerMultiplierLevel, FLOWERS.multiplierUpgrade.maxLevel);
     this._notify();
     return true;
   }
@@ -232,7 +243,10 @@ export class GameState {
     const cost = this.prices['mega-flower'];
     if (!this.spendFlowers(cost)) return false;
     this.megaFlowerLevel++;
-    this._scalePrice('mega-flower');
+    const levels = FLOWERS.megaUpgrade.price.levels;
+    if (levels && this.megaFlowerLevel < levels.length) {
+      this.prices['mega-flower'] = levels[this.megaFlowerLevel];
+    }
     this._notify();
     return true;
   }

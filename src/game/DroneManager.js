@@ -374,6 +374,9 @@ export class DroneManager {
       targetId: null,
       cooldown: 0,
       harvestTimer: 0,
+      harvestCount: 0,
+      totalHarvested: 0,
+      totalValueHarvested: 0,
       isUltimate: false,
       state: 'idle',
     };
@@ -550,6 +553,7 @@ export class DroneManager {
     const nearest = this._findNearestUnreserved(drone.homePos);
     if (!nearest) return;
 
+    drone.harvestCount = 0;
     drone.targetPos = nearest.pos;
     drone.targetId = nearest.id;
     this._claim(nearest.id);
@@ -578,7 +582,8 @@ export class DroneManager {
     const dist = new THREE.Vector2(dir.x, dir.z).length();
 
     if (dist < 0.5) {
-      drone.harvestTimer = this.getDroneHarvestTime(drone);
+      const isMega = this.flowerManager.isFlowerMega(drone.targetId);
+      drone.harvestTimer = this.getDroneHarvestTime(drone) * (isMega ? 2 : 1);
       drone.state = 'harvesting';
     } else {
       dir.y = 0;
@@ -616,8 +621,25 @@ export class DroneManager {
         this.state.addFlowers(val);
         const p = collected.position;
         this.floatingText.spawn(p.x, p.y, p.z, '+' + val);
+        drone.totalHarvested++;
+        drone.totalValueHarvested += val;
       }
       this._release(drone);
+      drone.harvestCount++;
+
+      const maxHarvests = drone.isUltimate ? UPG.ultimate.harvestsPerSortie : 1;
+      const currentPos = new THREE.Vector3(drone.mesh.position.x, 0, drone.mesh.position.z);
+      if (drone.harvestCount < maxHarvests) {
+        const next = this._findNearestUnreserved(currentPos);
+        if (next) {
+          drone.targetPos = next.pos;
+          drone.targetId = next.id;
+          this._claim(next.id);
+          drone.state = 'flying';
+          return;
+        }
+      }
+
       drone.targetPos = null;
       drone.targetId = null;
       drone.state = 'returning';

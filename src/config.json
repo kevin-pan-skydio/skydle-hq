@@ -17,28 +17,28 @@
       "spawnUpgrade": {
         "maxLevel": 25,
         "minInterval": 0.8,
-        "price": { "base": 15, "scale": [1.5, 2.0, 1.2] }
+        "price": { "base": 15, "scale": [1.5, 2.0, 1.2, 1200000] }
       },
       "batchUpgrade": {
         "maxLevel": 25,
-        "maxCount": 15,
+        "maxCount": 25,
         "guaranteed": [1, 2, 3],
         "postGuaranteedMin": 3,
         "maxRollProb": 0.82,
-        "price": { "base": 12, "scale": [1.5, 2.0, 1.2] }
+        "price": { "base": 12, "scale": [1.5, 2.0, 1.2, 1200000] }
       },
       "valueUpgrade": {
         "maxLevel": 25,
         "baseValue": 1,
         "maxValue": 100,
         "curve": 1.5,
-        "price": { "base": 5, "scale": [1.5, 2.0, 1.2] }
+        "price": { "base": 5, "scale": [1.5, 2.0, 1.2, 1200000] }
       },
       "multiplierUpgrade": {
         "maxLevel": 25,
         "baseMultiplier": 1,
         "maxMultiplier": 5,
-        "price": { "base": 8, "scale": [1.5, 2.0, 1.2] }
+        "price": { "base": 8, "scale": [1.5, 2.0, 1.2, 1200000] }
       },
       "megaUpgrade": {
         "maxLevel": 5,
@@ -55,14 +55,14 @@
       "cooldown": 10.0,
       "flightHeight": 2.5,
       "groundHeight": 0.25,
-      "price": { "base": 12, "scale": 1.75 },
+      "price": { "earlyPrices": [12, 24, 50], "scale": 1.6, "linearAfter": 14, "linearStep": 1000 },
       "upgrades": {
         "dock": {
           "cooldown": 1.0,
-          "price": { "base": 12000 }
+          "price": { "base": 50000 }
         },
         "propeller": {
-          "speedPerLevel": 1.5,
+          "speedPerLevel": 1.275,
           "maxLevel": 5,
           "price": { "base": 25, "scale": 2.0 }
         },
@@ -74,7 +74,9 @@
         },
         "ultimate": {
           "statMultiplier": 3,
-          "price": { "base": 8000 }
+          "harvestsPerSortie": 5,
+          "priceStep": 3000,
+          "price": { "base": 10000 }
         }
       }
     }

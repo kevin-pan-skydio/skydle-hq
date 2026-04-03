@@ -111,9 +111,9 @@ export class UI {
     document.getElementById('cancel-placement').addEventListener('click', () => {
       this.droneManager.cancelPlacement();
       this.state.dronesOwned--;
-      const prevCost = Math.floor(this.state.prices['r1-drone'] / R1.price.scale);
-      this.state.flowers += prevCost;
-      this.state.prices['r1-drone'] = prevCost;
+      const refund = this.state.lastDroneCost || 0;
+      this.state.flowers += refund;
+      this.state.prices['r1-drone'] = refund;
       this.state._notify();
       this.showToast('Placement cancelled, flowers refunded.');
     });
@@ -195,6 +195,24 @@ export class UI {
     document.getElementById('drone-popup-close').addEventListener('click', () => {
       this.closeDronePopup();
     });
+
+    this.dronePopupUpgrades.addEventListener('click', (e) => {
+      const ultBtn = e.target.closest('.popup-buy-ultimate');
+      if (!ultBtn) return;
+      const cost = this.state.prices['r1-ultimate'];
+      if (!this.state.spendFlowers(cost)) {
+        this.showToast('Not enough flowers!');
+        return;
+      }
+      if (this.droneManager.upgradeDroneUltimate(this.selectedDroneIdx)) {
+        this.showToast('🌈 Ultimate R1 activated! 3x all stats!');
+        if (!this.state.devMode) {
+          this.state.prices['r1-ultimate'] += UPG.ultimate.priceStep;
+        }
+        this.state._notify();
+        this.renderDronePopup();
+      }
+    });
   }
 
   showDronePopup(droneIdx) {
@@ -221,17 +239,7 @@ export class UI {
     const label = drone.isUltimate ? `✨ Ultimate R1 #${num}` : `R1 #${num}`;
     this.dronePopupTitle.textContent = label;
 
-    const stateLabels = {
-      idle: '💤 Idle',
-      flying: '✈️ Flying',
-      harvesting: '🌸 Harvesting',
-      returning: '↩️ Returning',
-      cooling: '⏳ Cooling',
-    };
-    const spd = this.droneManager.getDroneSpeed(drone).toFixed(1);
-    const ht = this.droneManager.getDroneHarvestTime(drone).toFixed(1);
-    const cd = this.droneManager.getDroneCooldown(drone).toFixed(1);
-    this.dronePopupStatus.textContent = `${stateLabels[drone.state] || drone.state} · ${spd} spd · ${ht}s harvest · ${cd}s cd`;
+    this._updateDronePopupStatus(drone);
 
     let upgradesHtml = '';
 
@@ -253,30 +261,26 @@ export class UI {
           <div class="popup-upgrade-name">Ultimate R1</div>
           <div class="popup-upgrade-desc">3x speed, 3x harvest, 3x cooldown · Rainbow Holo mode</div>
         </div>
-        <button class="buy-btn popup-buy-ultimate${canAfford ? '' : ' cannot-afford'}">${ultCost} 🌸</button>
-      </div>`;
+      </div>
+      <button class="buy-btn popup-buy-ultimate popup-buy-row${canAfford ? '' : ' cannot-afford'}">${ultCost} 🌸</button>`;
     }
 
     this.dronePopupUpgrades.innerHTML = upgradesHtml;
-    this._bindPopupUpgradeButtons();
   }
 
-  _bindPopupUpgradeButtons() {
-    const ultBtn = this.dronePopupUpgrades.querySelector('.popup-buy-ultimate');
-    if (ultBtn) {
-      ultBtn.addEventListener('click', () => {
-        const cost = this.state.prices['r1-ultimate'];
-        if (!this.state.spendFlowers(cost)) {
-          this.showToast('Not enough flowers!');
-          return;
-        }
-        if (this.droneManager.upgradeDroneUltimate(this.selectedDroneIdx)) {
-          this.showToast('🌈 Ultimate R1 activated! 3x all stats!');
-          this.state._notify();
-          this.renderDronePopup();
-        }
-      });
-    }
+  _updateDronePopupStatus(drone) {
+    const stateLabels = {
+      idle: '💤 Idle',
+      flying: '✈️ Flying',
+      harvesting: '🌸 Harvesting',
+      returning: '↩️ Returning',
+      cooling: '⏳ Cooling',
+    };
+    const spd = this.droneManager.getDroneSpeed(drone).toFixed(1);
+    const ht = this.droneManager.getDroneHarvestTime(drone).toFixed(1);
+    const cd = this.droneManager.getDroneCooldown(drone).toFixed(1);
+    const valStr = drone.totalValueHarvested >= 1000 ? (drone.totalValueHarvested / 1000).toFixed(1) + 'k' : drone.totalValueHarvested;
+    this.dronePopupStatus.innerHTML = `${stateLabels[drone.state] || drone.state}<br>${spd} spd · ${ht}s harvest · ${cd}s cd<br>🌸 ${drone.totalHarvested} harvested · ${valStr} value`;
   }
 
   updatePopupPosition() {
@@ -302,8 +306,16 @@ export class UI {
     const x = (screenPos.x * 0.5 + 0.5) * rect.width + rect.left;
     const y = (-screenPos.y * 0.5 + 0.5) * rect.height + rect.top;
 
+    const popupH = this.dronePopup.offsetHeight;
+    const flipped = y - popupH - 12 < 0;
+
     this.dronePopup.style.left = x + 'px';
-    this.dronePopup.style.top = y + 'px';
+    this.dronePopup.classList.toggle('flipped', flipped);
+    if (flipped) {
+      this.dronePopup.style.top = (y + 40) + 'px';
+    } else {
+      this.dronePopup.style.top = y + 'px';
+    }
   }
 
   onPlacementChange(active) {
@@ -453,7 +465,12 @@ export class UI {
       this.badgeDronesTip.textContent = `${this.state.dronesOwned} drone${this.state.dronesOwned > 1 ? 's' : ''}${ultCount > 0 ? `, ${ultCount} ultimate` : ''}`;
     }
 
-    if (this.selectedDroneIdx >= 0) this.renderDronePopup();
+    if (this.selectedDroneIdx >= 0) {
+      const ultBtn = this.dronePopupUpgrades.querySelector('.popup-buy-ultimate');
+      if (ultBtn) {
+        ultBtn.classList.toggle('cannot-afford', !this.state.canAfford('r1-ultimate'));
+      }
+    }
   }
 
   update(dt) {
@@ -471,6 +488,9 @@ export class UI {
 
     if (this.selectedDroneIdx >= 0) {
       this.updatePopupPosition();
+      const drones = this.droneManager.getDrones();
+      const drone = drones[this.selectedDroneIdx];
+      if (drone) this._updateDronePopupStatus(drone);
     }
   }
 

@@ -524,13 +524,17 @@ body.placement-mode::before {
   backdrop-filter: blur(8px);
   border-radius: 12px;
   border: 2px solid rgba(220, 60, 60, 0.5);
-  width: 240px;
+  width: 260px;
   color: #fff;
   padding: 0;
   pointer-events: auto;
   transform: translate(-50%, -100%) translateY(-12px);
   animation: popupAppear 0.2s ease;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+#drone-popup.flipped {
+  transform: translate(-50%, 0) translateY(0);
 }
 
 #drone-popup.hidden {
@@ -540,12 +544,12 @@ body.placement-mode::before {
 @keyframes popupAppear {
   0% {
     opacity: 0;
-    transform: translate(-50%, -100%) translateY(-4px) scale(0.95);
+    scale: 0.95;
   }
 
   100% {
     opacity: 1;
-    transform: translate(-50%, -100%) translateY(-12px) scale(1);
+    scale: 1;
   }
 }
 
@@ -560,6 +564,15 @@ body.placement-mode::before {
   background: rgba(15, 15, 25, 0.94);
   border-right: 2px solid rgba(220, 60, 60, 0.5);
   border-bottom: 2px solid rgba(220, 60, 60, 0.5);
+}
+
+#drone-popup.flipped::after {
+  bottom: auto;
+  top: -6px;
+  border-right: none;
+  border-bottom: none;
+  border-left: 2px solid rgba(220, 60, 60, 0.5);
+  border-top: 2px solid rgba(220, 60, 60, 0.5);
 }
 
 #drone-popup-header {
@@ -635,6 +648,37 @@ body.placement-mode::before {
   padding: 4px 8px;
 }
 
+#drone-popup-upgrades .popup-buy-row {
+  display: block;
+  width: calc(100% - 8px);
+  margin: 4px 4px 4px;
+  padding: 10px;
+  text-align: center;
+  font-size: 15px;
+  border-radius: 8px;
+  border: 1px solid rgba(220, 60, 60, 0.4);
+  background: rgba(220, 60, 60, 0.15);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, transform 0.1s;
+}
+
+#drone-popup-upgrades .popup-buy-row:hover {
+  background: rgba(220, 60, 60, 0.3);
+  transform: scale(1.02);
+}
+
+#drone-popup-upgrades .popup-buy-row.cannot-afford {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#drone-popup-upgrades .popup-buy-row.cannot-afford:hover {
+  transform: none;
+  background: rgba(220, 60, 60, 0.15);
+}
+
 /* Toast Notifications */
 #toast-container {
   position: fixed;
@@ -693,4 +737,34 @@ body::after {
   animation: fadeIn 0.5s ease;
   pointer-events: none;
   white-space: nowrap;
+}
+
+/* Speed toggle */
+#speed-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  padding: 6px 12px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+#speed-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+#speed-check {
+  accent-color: #ff9800;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }

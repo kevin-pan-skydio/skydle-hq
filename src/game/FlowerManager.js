@@ -207,6 +207,11 @@ export class FlowerManager {
     return f ? f.value : 1;
   }
 
+  isFlowerMega(id) {
+    const f = this.flowers.find((fl) => fl.id === id);
+    return f ? f.isMega : false;
+  }
+
   getCounts() {
     const gs = this.world.gridSize;
     return {

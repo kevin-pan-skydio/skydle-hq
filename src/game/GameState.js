@@ -26,7 +26,7 @@ export class GameState {
     this.megaFlowerLevel = 0;
 
     this.prices = {
-      'r1-drone': dev ? d : R1.price.base,
+      'r1-drone': dev ? d : R1.price.earlyPrices[0],
       'r1-dock': dev ? d : R1.upgrades.dock.price.base,
       'drone-speed': dev ? d : R1.upgrades.propeller.price.base,
       'drone-harvest': dev ? d : R1.upgrades.harvester.price.base,
@@ -82,8 +82,37 @@ export class GameState {
     if (this.devMode) return;
     const scale = this._priceScales[key];
     if (!scale) return;
+
+    if (Array.isArray(scale) && scale.length >= 4) {
+      const maxPrice = scale[3];
+      const current = this.prices[key];
+      const remaining = maxLevel - level;
+
+      if (current >= maxPrice) return;
+
+      if (current > maxPrice * 0.4 && remaining > 0) {
+        const step = Math.floor((maxPrice - current) / (remaining + 1));
+        this.prices[key] = current + Math.max(step, 1);
+        return;
+      }
+    }
+
     const effective = this._effectiveScale(scale, level, maxLevel);
     this.prices[key] = Math.floor(this.prices[key] * effective);
+  }
+
+  _scaleDronePrice() {
+    if (this.devMode) return;
+    const cfg = R1.price;
+    const n = this.dronesOwned;
+    if (n < cfg.earlyPrices.length) {
+      this.prices['r1-drone'] = cfg.earlyPrices[n];
+    } else if (n < cfg.linearAfter) {
+      this.prices['r1-drone'] = Math.floor(this.prices['r1-drone'] * cfg.scale);
+    } else {
+      const k = n - cfg.linearAfter + 1;
+      this.prices['r1-drone'] = this.prices['r1-drone'] + cfg.linearStep * k;
+    }
   }
 
   _effectiveScale(scale, level, maxLevel) {
@@ -99,8 +128,9 @@ export class GameState {
   buyDrone() {
     const cost = this.prices['r1-drone'];
     if (!this.spendFlowers(cost)) return false;
+    this.lastDroneCost = cost;
     this.dronesOwned++;
-    this._scalePrice('r1-drone', this.dronesOwned);
+    this._scaleDronePrice();
     this._notify();
     return true;
   }

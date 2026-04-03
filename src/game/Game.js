@@ -177,8 +177,22 @@ export class Game {
   start() {
     this.clock = new THREE.Clock();
     const speedParam = new URLSearchParams(window.location.search).get('speed');
-    this.timeMultiplier = speedParam ? parseFloat(speedParam) : 1;
-    if (isNaN(this.timeMultiplier) || this.timeMultiplier <= 0) this.timeMultiplier = 1;
+    this.configuredSpeed = speedParam ? parseFloat(speedParam) : 1;
+    if (isNaN(this.configuredSpeed) || this.configuredSpeed <= 0) this.configuredSpeed = 1;
+    this.timeMultiplier = this.configuredSpeed;
+
+    if (this.configuredSpeed > 1) {
+      const toggle = document.getElementById('speed-toggle');
+      const check = document.getElementById('speed-check');
+      const label = document.getElementById('speed-label');
+      toggle.classList.remove('hidden');
+      label.textContent = `⏩ ${this.configuredSpeed}x`;
+      check.addEventListener('change', () => {
+        this.timeMultiplier = check.checked ? this.configuredSpeed : 1;
+        label.textContent = check.checked ? `⏩ ${this.configuredSpeed}x` : '▶ 1x';
+      });
+    }
+
     this.animate();
   }
 

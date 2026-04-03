@@ -24,15 +24,13 @@ Mega flowers multiply the base by 5× on top of that. Income scales with:
 
 At max upgrades (value 100, multiplier 5×), each regular flower yields 500 flowers. Mega flowers yield 2,500.
 
-## Price Scaling — S-Curve Model
+## Price Scaling — S-Curve with Linear Cap
 
-All 25-level upgrades use an **S-curve** for per-level price scaling `[early, peak, late]` = `[1.5, 2.0, 1.2]`:
+All 25-level upgrades use a three-phase pricing model: `[early, peak, late, maxPrice]` = `[1.5, 2.0, 1.2, 1200000]`
 
-- **Early levels**: ×1.5 per level (+50%) — cheap enough to hook the player
-- **Mid levels**: ×2.0 per level (+100%) — steep ramp matches income acceleration
-- **Late levels**: ×1.2 per level (+20%) — levels off as income gains taper
+### Phase 1: S-Curve (levels 1–~18)
 
-The effective multiplier at each level is:
+Per-level multiplier follows a sine bell curve:
 
 ```
 t = level / maxLevel
@@ -41,19 +39,31 @@ scale = (t ≤ 0.5) ? early + (peak − early) × bell
                     : late  + (peak − late)  × bell
 ```
 
+- **Early levels**: ×1.5 per level (+50%) — cheap enough to hook the player
+- **Mid levels**: ×2.0 per level (+100%) — steep ramp matches income acceleration
+- **Late levels**: ×1.2 per level (+20%) — begins tapering
+
+### Phase 2: Linear Cap (levels ~19–25)
+
+Once the price exceeds 40% of `maxPrice` (480,000), growth switches to **linear increments** that distribute the remaining headroom evenly across remaining levels, capping at **1,200,000**.
+
+```
+step = floor((maxPrice − currentPrice) / (remainingLevels + 1))
+```
+
 ## Raw Prices — All Upgrades
 
 ### Flower Value (25 levels, base 5)
 
 | Level | Cost | Level | Cost | Level | Cost |
 |-------|------|-------|------|-------|------|
-| 1 | 5 | 10 | 712 | 19 | 285,327 |
-| 2 | 7 | 11 | 1,406 | 20 | 498,648 |
-| 3 | 11 | 12 | 2,799 | 21 | 832,855 |
-| 4 | 18 | 13 | 5,595 | 22 | 1,320,410 |
-| 5 | 31 | 14 | 11,181 | 23 | 1,973,352 |
-| 6 | 55 | 15 | 22,203 | 24 | 2,760,624 |
-| 7 | 101 | 16 | 43,536 | 25 | 3,589,547 |
+| 1 | 5 | 10 | 712 | 19 | 498,648 |
+| 2 | 7 | 11 | 1,406 | 20 | 615,540 |
+| 3 | 11 | 12 | 2,799 | 21 | 732,432 |
+| 4 | 18 | 13 | 5,595 | 22 | 849,324 |
+| 5 | 31 | 14 | 11,181 | 23 | 966,216 |
+| 6 | 55 | 15 | 22,203 | 24 | 1,083,108 |
+| 7 | 101 | 16 | 43,536 | 25 | ~1,200,000 |
 | 8 | 190 | 17 | 83,757 | | |
 | 9 | 365 | 18 | 157,083 | | |
 
@@ -61,13 +71,13 @@ scale = (t ≤ 0.5) ? early + (peak − early) × bell
 
 | Level | Cost | Level | Cost | Level | Cost |
 |-------|------|-------|------|-------|------|
-| 1 | 8 | 10 | 1,233 | 19 | 494,208 |
-| 2 | 12 | 11 | 2,435 | 20 | 863,696 |
-| 3 | 19 | 12 | 4,848 | 21 | 1,442,569 |
-| 4 | 31 | 13 | 9,691 | 22 | 2,287,053 |
-| 5 | 53 | 14 | 19,366 | 23 | 3,417,999 |
-| 6 | 95 | 15 | 38,457 | 24 | 4,781,616 |
-| 7 | 175 | 16 | 75,408 | 25 | 6,217,375 |
+| 1 | 8 | 10 | 1,233 | 19 | 595,035 |
+| 2 | 12 | 11 | 2,435 | 20 | 695,862 |
+| 3 | 19 | 12 | 4,848 | 21 | 796,689 |
+| 4 | 31 | 13 | 9,691 | 22 | 897,516 |
+| 5 | 53 | 14 | 19,366 | 23 | 998,344 |
+| 6 | 95 | 15 | 38,457 | 24 | 1,099,172 |
+| 7 | 175 | 16 | 75,408 | 25 | ~1,200,000 |
 | 8 | 329 | 17 | 145,074 | | |
 | 9 | 632 | 18 | 272,080 | | |
 
@@ -75,13 +85,13 @@ scale = (t ≤ 0.5) ? early + (peak − early) × bell
 
 | Level | Cost | Level | Cost | Level | Cost |
 |-------|------|-------|------|-------|------|
-| 1 | 15 | 10 | 2,479 | 19 | 993,972 |
-| 2 | 23 | 11 | 4,897 | 20 | 1,737,102 |
-| 3 | 37 | 12 | 9,750 | 21 | 2,901,356 |
-| 4 | 62 | 13 | 19,490 | 22 | 4,599,818 |
-| 5 | 107 | 14 | 38,949 | 23 | 6,874,426 |
-| 6 | 191 | 15 | 77,346 | 24 | 9,616,991 |
-| 7 | 351 | 16 | 151,663 | 25 | 12,504,652 |
+| 1 | 15 | 10 | 2,479 | 19 | 710,412 |
+| 2 | 23 | 11 | 4,897 | 20 | 792,010 |
+| 3 | 37 | 12 | 9,750 | 21 | 873,608 |
+| 4 | 62 | 13 | 19,490 | 22 | 955,206 |
+| 5 | 107 | 14 | 38,949 | 23 | 1,036,804 |
+| 6 | 191 | 15 | 77,346 | 24 | 1,118,402 |
+| 7 | 351 | 16 | 151,663 | 25 | ~1,200,000 |
 | 8 | 661 | 17 | 291,778 | | |
 | 9 | 1,270 | 18 | 547,218 | | |
 
@@ -89,13 +99,13 @@ scale = (t ≤ 0.5) ? early + (peak − early) × bell
 
 | Level | Cost | Level | Cost | Level | Cost |
 |-------|------|-------|------|-------|------|
-| 1 | 12 | 10 | 1,921 | 19 | 770,079 |
-| 2 | 18 | 11 | 3,794 | 20 | 1,345,819 |
-| 3 | 29 | 12 | 7,554 | 21 | 2,247,824 |
-| 4 | 48 | 13 | 15,100 | 22 | 3,563,706 |
-| 5 | 83 | 14 | 30,176 | 23 | 5,325,957 |
-| 6 | 148 | 15 | 59,924 | 24 | 7,450,757 |
-| 7 | 272 | 16 | 117,501 | 25 | 9,687,970 |
+| 1 | 12 | 10 | 1,921 | 19 | 831,496 |
+| 2 | 18 | 11 | 3,794 | 20 | 892,913 |
+| 3 | 29 | 12 | 7,554 | 21 | 954,330 |
+| 4 | 48 | 13 | 15,100 | 22 | 1,015,747 |
+| 5 | 83 | 14 | 30,176 | 23 | 1,077,164 |
+| 6 | 148 | 15 | 59,924 | 24 | 1,138,582 |
+| 7 | 272 | 16 | 117,501 | 25 | ~1,200,000 |
 | 8 | 512 | 17 | 226,055 | | |
 | 9 | 984 | 18 | 423,957 | | |
 
@@ -109,20 +119,31 @@ scale = (t ≤ 0.5) ? early + (peak − early) × bell
 | 4 | 50,000 |
 | 5 | 200,000 |
 
-### R1 Drones (×1.75 flat scale)
+### R1 Drones — Three-Phase Pricing
 
-| Drone # | Cost |
-|---------|------|
-| 1 | 12 |
-| 2 | 21 |
-| 3 | 36 |
-| 4 | 63 |
-| 5 | 110 |
-| 6 | 192 |
-| 7 | 336 |
-| 8 | 588 |
-| 9 | 1,029 |
-| 10 | 1,800 |
+Drone pricing uses three phases to match diminishing returns of additional drones:
+
+1. **Fixed early** (drones 1–3): hand-tuned cheap prices to hook the player
+2. **Exponential** (drones 4–12): ×1.6 per drone during fleet-building
+3. **Linear** (drones 13+): +200 per drone as marginal value tapers
+
+| Drone # | Cost | Phase |
+|---------|------|-------|
+| 1 | 12 | Fixed |
+| 2 | 24 | Fixed |
+| 3 | 50 | Fixed |
+| 4 | 80 | ×1.6 |
+| 5 | 128 | ×1.6 |
+| 6 | 204 | ×1.6 |
+| 7 | 326 | ×1.6 |
+| 8 | 521 | ×1.6 |
+| 9 | 833 | ×1.6 |
+| 10 | 1,332 | ×1.6 |
+| 11 | 2,131 | ×1.6 |
+| 12 | 3,409 | ×1.6 |
+| 13 | 3,609 | +200 |
+| 14 | 3,809 | +200 |
+| 15 | 4,009 | +200 |
 
 ### Propeller+ (5 levels, ×2.0 flat scale)
 
@@ -151,13 +172,13 @@ scale = (t ≤ 0.5) ? early + (peak − early) × bell
 
 | Cost |
 |------|
-| 12,000 |
+| 50,000 |
 
 ### Ultimate R1 (per drone, one-time each)
 
 | Cost |
 |------|
-| 8,000 |
+| 10,000 |
 
 ## Flower Value — Power Curve Progression
 
@@ -196,10 +217,10 @@ Levels 3–25: guaranteed minimum of 3, then each of 12 extra slots (up to 15 to
 
 | Upgrade | Max Level | Effect | Base Cost | Scale |
 |---------|-----------|--------|-----------|-------|
-| Flower Value | 25 | Base value 1 → 100 per flower (power curve `t^1.5`) | 5 | S-curve [1.5, 2.0, 1.2] |
-| Multiplier | 25 | Income multiplier 1× → 5× | 8 | S-curve [1.5, 2.0, 1.2] |
-| Faster Spawns | 25 | Spawn interval 3.5s → 0.8s | 15 | S-curve [1.5, 2.0, 1.2] |
-| Batch Spawns | 25 | Flowers per cycle 1 → up to 15 (probabilistic) | 12 | S-curve [1.5, 2.0, 1.2] |
+| Flower Value | 25 | Base value 1 → 100 per flower (power curve `t^1.5`) | 5 | S-curve [1.5, 2.0, 1.2] cap 1.2M |
+| Multiplier | 25 | Income multiplier 1× → 5× | 8 | S-curve [1.5, 2.0, 1.2] cap 1.2M |
+| Faster Spawns | 25 | Spawn interval 3.5s → 0.8s | 15 | S-curve [1.5, 2.0, 1.2] cap 1.2M |
+| Batch Spawns | 25 | Flowers per cycle 1 → up to 15 (probabilistic) | 12 | S-curve [1.5, 2.0, 1.2] cap 1.2M |
 | Mega Flowers | 5 | Mega chance 0% → 50% (each mega = 5× value) | 120 | Explicit tiers |
 
 ### Drone Upgrades (Upgrades → Drones tab)
@@ -208,19 +229,19 @@ Levels 3–25: guaranteed minimum of 3, then each of 12 extra slots (up to 15 to
 |---------|-----------|--------|-----------|-------|
 | Propeller+ | 5 | Flight speed +1.5/level (all R1s) | 25 | ×2.0 flat |
 | Harvester+ | 8 | Harvest time −0.5s/level, min 0.5s (all R1s) | 30 | ×2.0 flat |
-| Drone Dock | 1 | Cooldown → 1s for all R1s | 12,000 | — |
+| Drone Dock | 1 | Cooldown → 1s for all R1s | 50,000 | — |
 
 ### Per-Drone Upgrades (click drone's dock tile)
 
 | Upgrade | Cost | Effect |
 |---------|------|--------|
-| Ultimate R1 | 8,000 | 3× all stats + rainbow holo visual |
+| Ultimate R1 | 10,000 | 3× all stats + rainbow holo visual |
 
 ### Drones
 
 | Stat | Base Value |
 |------|-----------|
-| Buy price | 12 (×1.75 each) |
+| Buy price | 12 → 24 → 50 (fixed), then ×1.6, then +200 |
 | Flight speed | 2.1 |
 | Harvest time | 4.3s |
 | Cooldown | 10s (1s with dock) |

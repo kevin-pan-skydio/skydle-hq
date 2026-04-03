@@ -1,52 +1,141 @@
 import * as THREE from 'three';
+import CONFIG from '../config.json';
 
-const DRONE_HEIGHT = 2.5;
-const GROUND_HEIGHT = 0.25;
-const BASE_DRONE_SPEED = 3;
-const SPEED_PER_LEVEL = 1.5;
-const COLLECT_COOLDOWN = 7.0;
-const COLLECT_COOLDOWN_DOCK = 3.0;
-const BASE_HARVEST_TIME = 3.0;
-const HARVEST_REDUCTION_PER_LEVEL = 0.5;
-const MIN_HARVEST_TIME = 0.5;
+const R1 = CONFIG.drones.r1;
+const UPG = R1.upgrades;
 
 function createR1Drone() {
   const group = new THREE.Group();
+  const black = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+  const darkGray = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+  const propMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  const blueLed = new THREE.MeshBasicMaterial({ color: 0x2288ff });
 
-  const bodyGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 8);
-  const bodyMat = new THREE.MeshLambertMaterial({ color: 0xdd3333 });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.castShadow = true;
-  group.add(body);
+  // Central fuselage — elongated rounded body
+  const fuselage = new THREE.Mesh(
+    new THREE.BoxGeometry(0.35, 0.16, 1.1),
+    black
+  );
+  fuselage.castShadow = true;
+  group.add(fuselage);
 
-  const innerGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.22, 8);
-  const innerMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
-  const inner = new THREE.Mesh(innerGeo, innerMat);
-  inner.castShadow = true;
-  group.add(inner);
+  // Fuselage top cap
+  const topCap = new THREE.Mesh(
+    new THREE.BoxGeometry(0.3, 0.06, 0.95),
+    darkGray
+  );
+  topCap.position.y = 0.1;
+  group.add(topCap);
 
-  const armMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
-  const propMat = new THREE.MeshLambertMaterial({ color: 0x999999 });
+  // Two rectangular prop guard frames (left and right)
+  for (const side of [-1, 1]) {
+    const guardGroup = new THREE.Group();
+    const cx = side * 0.6;
+    const guardW = 0.75;
+    const guardD = 1.05;
+    const barThick = 0.06;
+    const barH = 0.1;
 
-  for (let i = 0; i < 4; i++) {
-    const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.45), armMat);
-    arm.position.set(Math.cos(angle) * 0.5, 0, Math.sin(angle) * 0.5);
-    arm.rotation.y = -angle;
-    arm.castShadow = true;
-    group.add(arm);
+    // Front & back bars
+    for (const fz of [-1, 1]) {
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(guardW, barH, barThick),
+        black
+      );
+      bar.position.set(cx, 0.02, fz * guardD * 0.5);
+      bar.castShadow = true;
+      group.add(bar);
+    }
+    // Left & right side bars
+    for (const fx of [-1, 1]) {
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(barThick, barH, guardD),
+        black
+      );
+      bar.position.set(cx + fx * guardW * 0.5, 0.02, 0);
+      bar.castShadow = true;
+      group.add(bar);
+    }
 
-    const prop = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.03, 0.07), propMat);
-    prop.position.set(Math.cos(angle) * 0.7, 0.1, Math.sin(angle) * 0.7);
-    prop.userData.propAngle = i * Math.PI / 2;
-    group.add(prop);
+    // Connecting struts from fuselage to guard
+    for (const fz of [-0.3, 0.3]) {
+      const strut = new THREE.Mesh(
+        new THREE.BoxGeometry(0.28, 0.07, 0.08),
+        darkGray
+      );
+      strut.position.set(side * 0.33, 0, fz);
+      strut.castShadow = true;
+      group.add(strut);
+    }
+
+    // Two propeller hubs + blades per guard
+    for (const pz of [-0.28, 0.28]) {
+      // Hub
+      const hub = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.06, 0.06, 0.08, 6),
+        darkGray
+      );
+      hub.position.set(cx, 0.1, pz);
+      group.add(hub);
+
+      // Propeller blades (5 per rotor)
+      for (let b = 0; b < 5; b++) {
+        const angle = (b / 5) * Math.PI * 2;
+        const blade = new THREE.Mesh(
+          new THREE.BoxGeometry(0.22, 0.02, 0.05),
+          propMat
+        );
+        blade.position.set(
+          cx + Math.cos(angle) * 0.14,
+          0.12,
+          pz + Math.sin(angle) * 0.14
+        );
+        blade.rotation.y = -angle;
+        blade.userData.propAngle = angle;
+        group.add(blade);
+      }
+    }
+
+    // Blue LED accent on front edge of each guard
+    const ledStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.25, 0.04, 0.04),
+      blueLed
+    );
+    ledStrip.position.set(cx, -0.02, -guardD * 0.5);
+    group.add(ledStrip);
   }
 
+  // Front camera gimbal
+  const camMount = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.07, 0.07, 0.08, 8),
+    darkGray
+  );
+  camMount.position.set(0, -0.06, -0.55);
+  group.add(camMount);
+
+  const camLens = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.05, 0.04, 8),
+    new THREE.MeshLambertMaterial({ color: 0x333344 })
+  );
+  camLens.position.set(0, -0.06, -0.6);
+  camLens.rotation.x = Math.PI / 2;
+  group.add(camLens);
+
+  // Camera LED ring
+  const camRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.065, 0.012, 6, 12),
+    blueLed
+  );
+  camRing.position.set(0, -0.06, -0.59);
+  camRing.rotation.x = Math.PI / 2;
+  group.add(camRing);
+
+  // Status LED (used for cooldown pulsing)
   const led = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, 0.1, 0.1),
+    new THREE.BoxGeometry(0.08, 0.06, 0.06),
     new THREE.MeshBasicMaterial({ color: 0x00ff00 })
   );
-  led.position.set(0, 0.15, 0.45);
+  led.position.set(0, 0.14, -0.35);
   led.userData.isLed = true;
   group.add(led);
 
@@ -55,62 +144,91 @@ function createR1Drone() {
 
 function createDockMesh() {
   const group = new THREE.Group();
+  const skyBlue = new THREE.MeshLambertMaterial({ color: 0x3a7bd5 });
+  const darkBlue = new THREE.MeshLambertMaterial({ color: 0x2a5a9a });
+  const silver = new THREE.MeshLambertMaterial({ color: 0x999999 });
 
-  // Base platform
-  const base = new THREE.Mesh(
-    new THREE.BoxGeometry(1.8, 0.15, 1.8),
-    new THREE.MeshLambertMaterial({ color: 0x555555 })
-  );
-  base.position.y = 0.075;
-  base.receiveShadow = true;
-  group.add(base);
+  const platformY = 0.8;
 
-  // Landing pad
-  const pad = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.55, 0.55, 0.04, 8),
-    new THREE.MeshLambertMaterial({ color: 0x3a7bd5 })
-  );
-  pad.position.y = 0.17;
-  group.add(pad);
-
-  // Corner posts
-  for (const sx of [-1, 1]) {
-    for (const sz of [-1, 1]) {
-      const post = new THREE.Mesh(
-        new THREE.BoxGeometry(0.12, 0.5, 0.12),
-        new THREE.MeshLambertMaterial({ color: 0x444444 })
+  // Tripod legs built from stacked voxel segments so they're clearly visible
+  const legTargets = [
+    { x: 0, z: -0.9 },
+    { x: 0.78, z: 0.45 },
+    { x: -0.78, z: 0.45 },
+  ];
+  for (const foot of legTargets) {
+    const steps = 5;
+    for (let i = 0; i < steps; i++) {
+      const t = i / steps;
+      const seg = new THREE.Mesh(
+        new THREE.BoxGeometry(0.14, platformY / steps + 0.02, 0.14),
+        silver
       );
-      post.position.set(sx * 0.78, 0.4, sz * 0.78);
-      post.castShadow = true;
-      group.add(post);
+      seg.position.set(
+        foot.x * t,
+        platformY - t * platformY + (platformY / steps) / 2,
+        foot.z * t
+      );
+      seg.castShadow = true;
+      group.add(seg);
     }
+    // Foot pad
+    const pad = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 0.06, 0.2),
+      new THREE.MeshLambertMaterial({ color: 0x222222 })
+    );
+    pad.position.set(foot.x, 0.03, foot.z);
+    group.add(pad);
   }
 
-  // Side rails
-  for (const sx of [-1, 1]) {
-    const rail = new THREE.Mesh(
-      new THREE.BoxGeometry(0.06, 0.06, 1.44),
-      new THREE.MeshLambertMaterial({ color: 0x666666 })
-    );
-    rail.position.set(sx * 0.78, 0.62, 0);
-    group.add(rail);
-  }
-  for (const sz of [-1, 1]) {
-    const rail = new THREE.Mesh(
-      new THREE.BoxGeometry(1.44, 0.06, 0.06),
-      new THREE.MeshLambertMaterial({ color: 0x666666 })
-    );
-    rail.position.set(0, 0.62, sz * 0.78);
-    group.add(rail);
-  }
-
-  // Status light
-  const light = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, 0.1, 0.1),
-    new THREE.MeshBasicMaterial({ color: 0x00aaff })
+  // Platform
+  const platform = new THREE.Mesh(
+    new THREE.BoxGeometry(0.75, 0.12, 0.75),
+    skyBlue
   );
-  light.position.set(0.78, 0.7, 0.78);
-  group.add(light);
+  platform.position.y = platformY;
+  platform.castShadow = true;
+  platform.receiveShadow = true;
+  group.add(platform);
+
+  const rim = new THREE.Mesh(
+    new THREE.BoxGeometry(0.85, 0.03, 0.85),
+    darkBlue
+  );
+  rim.position.y = platformY + 0.07;
+  group.add(rim);
+
+  // April tag
+  const tagBase = new THREE.Mesh(
+    new THREE.BoxGeometry(0.26, 0.02, 0.26),
+    new THREE.MeshLambertMaterial({ color: 0xeeeeee })
+  );
+  tagBase.position.set(-0.17, platformY + 0.09, -0.17);
+  group.add(tagBase);
+
+  const tagMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  const s = 0.05;
+  const tagBlocks = [
+    [-2,-2],[-1,-2],[0,-2],[1,-2],[2,-2],
+    [-2,-1],[2,-1],[-2,0],[0,0],[2,0],
+    [-2,1],[2,1],[-2,2],[-1,2],[0,2],[1,2],[2,2],
+  ];
+  for (const [px, pz] of tagBlocks) {
+    const blk = new THREE.Mesh(
+      new THREE.BoxGeometry(s, 0.02, s),
+      tagMat
+    );
+    blk.position.set(-0.17 + px * s, platformY + 0.1, -0.17 + pz * s);
+    group.add(blk);
+  }
+
+  // Charging contacts
+  const contacts = new THREE.Mesh(
+    new THREE.BoxGeometry(0.18, 0.03, 0.06),
+    new THREE.MeshBasicMaterial({ color: 0xccaa00 })
+  );
+  contacts.position.set(0.1, platformY + 0.08, 0.15);
+  group.add(contacts);
 
   group.castShadow = true;
   return group;
@@ -236,7 +354,7 @@ export class DroneManager {
     if (!pos) return false;
 
     const mesh = createR1Drone();
-    mesh.position.set(pos.x, GROUND_HEIGHT, pos.z);
+    mesh.position.set(pos.x, R1.groundHeight, pos.z);
     this.scene.add(mesh);
 
     const harvestBar = createProgressBarSprite();
@@ -245,7 +363,7 @@ export class DroneManager {
 
     this.world.markDockOccupied(dockRow, dockCol);
 
-    this.drones.push({
+    const droneObj = {
       mesh,
       harvestBar,
       dockMesh: null,
@@ -256,11 +374,18 @@ export class DroneManager {
       targetId: null,
       cooldown: 0,
       harvestTimer: 0,
-      hasDock: false,
-      speedLevel: 0,
-      harvestLevel: 0,
+      isUltimate: false,
       state: 'idle',
-    });
+    };
+
+    if (this.state.dockLevel > 0) {
+      const dockMesh = createDockMesh();
+      dockMesh.position.set(pos.x, 0, pos.z);
+      this.scene.add(dockMesh);
+      droneObj.dockMesh = dockMesh;
+    }
+
+    this.drones.push(droneObj);
 
     this.placementMode = false;
     this._notifyPlacement();
@@ -279,39 +404,47 @@ export class DroneManager {
   }
 
   getDroneSpeed(drone) {
-    return BASE_DRONE_SPEED + drone.speedLevel * SPEED_PER_LEVEL;
+    const base = R1.baseSpeed + this.state.droneSpeedLevel * UPG.propeller.speedPerLevel;
+    return drone.isUltimate ? base * UPG.ultimate.statMultiplier : base;
   }
 
   getDroneHarvestTime(drone) {
-    return Math.max(MIN_HARVEST_TIME, BASE_HARVEST_TIME - drone.harvestLevel * HARVEST_REDUCTION_PER_LEVEL);
+    const base = Math.max(UPG.harvester.minHarvestTime, R1.baseHarvestTime - this.state.droneHarvestLevel * UPG.harvester.reductionPerLevel);
+    return drone.isUltimate ? base / UPG.ultimate.statMultiplier : base;
   }
 
-  upgradeDroneSpeed(index) {
+  getDroneCooldown(drone) {
+    const base = this.state.dockLevel > 0 ? UPG.dock.cooldown : R1.cooldown;
+    return drone.isUltimate ? base / UPG.ultimate.statMultiplier : base;
+  }
+
+  applyGlobalDock() {
+    for (const drone of this.drones) {
+      if (!drone.dockMesh) {
+        const dockMesh = createDockMesh();
+        dockMesh.position.set(drone.homePos.x, 0, drone.homePos.z);
+        this.scene.add(dockMesh);
+        drone.dockMesh = dockMesh;
+      }
+    }
+  }
+
+  upgradeDroneUltimate(index) {
     const drone = this.drones[index];
-    if (!drone) return false;
-    drone.speedLevel++;
+    if (!drone || drone.isUltimate) return false;
+    drone.isUltimate = true;
+    this._applyRainbowHolo(drone);
     return true;
   }
 
-  upgradeDroneHarvest(index) {
-    const drone = this.drones[index];
-    if (!drone) return false;
-    drone.harvestLevel++;
-    return true;
-  }
-
-  upgradeDroneDock(index) {
-    const drone = this.drones[index];
-    if (!drone || drone.hasDock) return false;
-    drone.hasDock = true;
-
-    // Add dock mesh at the drone's home position
-    const dockMesh = createDockMesh();
-    dockMesh.position.set(drone.homePos.x, 0, drone.homePos.z);
-    this.scene.add(dockMesh);
-    drone.dockMesh = dockMesh;
-
-    return true;
+  _applyRainbowHolo(drone) {
+    drone.mesh.traverse((child) => {
+      if (child.isMesh && !child.userData.isLed) {
+        child.material = child.material.clone();
+        child.userData.holoMat = child.material;
+        child.userData.holoBaseColor = child.material.color.clone();
+      }
+    });
   }
 
   update(dt) {
@@ -327,10 +460,24 @@ export class DroneManager {
         }
       }
 
+      // Rainbow holo color cycling for ultimate drones
+      if (drone.isUltimate) {
+        const t = performance.now() * 0.001;
+        const baseHue = (t * 0.3) % 1;
+        let idx = 0;
+        drone.mesh.traverse((child) => {
+          if (child.userData.holoMat) {
+            const hue = (baseHue + idx * 0.02) % 1;
+            child.userData.holoMat.color.setHSL(hue, 0.7, 0.45);
+            idx++;
+          }
+        });
+      }
+
       if (isGrounded) {
-        drone.mesh.position.y = drone.hasDock ? GROUND_HEIGHT + 0.65 : GROUND_HEIGHT;
+        drone.mesh.position.y = drone.dockMesh ? R1.groundHeight + 0.65 : R1.groundHeight;
       } else {
-        drone.mesh.position.y = DRONE_HEIGHT + Math.sin(performance.now() * 0.003 + drone.mesh.id) * 0.15;
+        drone.mesh.position.y = R1.flightHeight + Math.sin(performance.now() * 0.003 + drone.mesh.id) * 0.15;
       }
 
       // LED indicator: green = ready, pulsing red = cooling
@@ -462,9 +609,10 @@ export class DroneManager {
 
     drone.harvestTimer -= dt;
     if (drone.harvestTimer <= 0) {
-      const val = this.flowerManager.getFlowerValue(drone.targetId);
+      const baseVal = this.flowerManager.getFlowerValue(drone.targetId);
       const collected = this.flowerManager.collectById(drone.targetId);
       if (collected) {
+        const val = this.state.getCollectionValue(baseVal);
         this.state.addFlowers(val);
         const p = collected.position;
         this.floatingText.spawn(p.x, p.y, p.z, '+' + val);
@@ -484,7 +632,7 @@ export class DroneManager {
     if (dist < 0.5) {
       drone.mesh.position.x = drone.homePos.x;
       drone.mesh.position.z = drone.homePos.z;
-      drone.cooldown = drone.hasDock ? COLLECT_COOLDOWN_DOCK : COLLECT_COOLDOWN;
+      drone.cooldown = this.getDroneCooldown(drone);
       drone.state = 'cooling';
     } else {
       dir.y = 0;

@@ -1,29 +1,58 @@
 import * as THREE from 'three';
+import CONFIG from '../config.json';
+
+const R1 = CONFIG.drones.r1;
+const UPG = R1.upgrades;
 
 export class UI {
-  constructor(state, droneManager, camera, renderer) {
+  constructor(state, droneManager, flowerManager, camera, renderer) {
     this.state = state;
     this.droneManager = droneManager;
+    this.flowerManager = flowerManager;
     this.camera = camera;
     this.renderer = renderer;
 
     this.flowerCountEl = document.getElementById('flower-count');
     this.fpsEl = document.getElementById('flowers-per-sec');
+    this.mapFlowerCountEl = document.getElementById('map-flower-count');
+    this.mapFlowerMaxEl = document.getElementById('map-flower-max');
+    this.mapFlowersEl = document.getElementById('map-flowers');
     this.shopEl = document.getElementById('shop');
     this.toastContainer = document.getElementById('toast-container');
     this.placementBanner = document.getElementById('placement-banner');
-    this.buyBtn = document.getElementById('buy-r1');
+    this.buyR1Btn = document.getElementById('buy-r1-btn');
     this.costEl = document.getElementById('r1-cost');
-    this.ownedEl = document.getElementById('drones-owned');
+
+    this.dockLevelEl = document.getElementById('dock-level');
+    this.dockCostEl = document.getElementById('global-dock-cost');
+    this.globalSpeedLevelEl = document.getElementById('global-speed-level');
+    this.globalSpeedCostEl = document.getElementById('global-speed-cost');
+    this.globalHarvestLevelEl = document.getElementById('global-harvest-level');
+    this.globalHarvestCostEl = document.getElementById('global-harvest-cost');
 
     this.spawnLevelEl = document.getElementById('spawn-level');
     this.spawnCostEl = document.getElementById('spawn-speed-cost');
+    this.batchLevelEl = document.getElementById('batch-level');
+    this.batchCostEl = document.getElementById('spawn-batch-cost');
+    this.valueLevelEl = document.getElementById('value-level');
+    this.valueCostEl = document.getElementById('flower-value-cost');
+    this.multiLevelEl = document.getElementById('multi-level');
+    this.multiCostEl = document.getElementById('flower-multi-cost');
     this.megaLevelEl = document.getElementById('mega-level');
     this.megaCostEl = document.getElementById('mega-flower-cost');
 
     this.badgeSpawn = document.getElementById('badge-spawn');
     this.badgeSpawnVal = document.getElementById('badge-spawn-val');
     this.badgeSpawnTip = document.getElementById('badge-spawn-tip');
+    this.badgeBatch = document.getElementById('badge-batch');
+    this.badgeBatchVal = document.getElementById('badge-batch-val');
+    this.badgeBatchTip = document.getElementById('badge-batch-tip');
+    this.badgeValue = document.getElementById('badge-value');
+    this.badgeValueVal = document.getElementById('badge-value-val');
+    this.badgeValueTip = document.getElementById('badge-value-tip');
+    this.badgeMulti = document.getElementById('badge-multi');
+    this.badgeMultiVal = document.getElementById('badge-multi-val');
+    this.badgeMultiTip = document.getElementById('badge-multi-tip');
     this.badgeMega = document.getElementById('badge-mega');
     this.badgeMegaVal = document.getElementById('badge-mega-val');
     this.badgeMegaTip = document.getElementById('badge-mega-tip');
@@ -68,7 +97,7 @@ export class UI {
       this.shopEl.classList.add('hidden');
     });
 
-    this.buyBtn.addEventListener('click', () => {
+    this.buyR1Btn.addEventListener('click', () => {
       if (this.state.buyDrone()) {
         this.showToast('Skydio R1 purchased! Place it on a purple tile.');
         this.shopEl.classList.add('hidden');
@@ -82,11 +111,36 @@ export class UI {
     document.getElementById('cancel-placement').addEventListener('click', () => {
       this.droneManager.cancelPlacement();
       this.state.dronesOwned--;
-      const prevCost = Math.floor(this.state.prices['r1-drone'] / 1.6);
+      const prevCost = Math.floor(this.state.prices['r1-drone'] / R1.price.scale);
       this.state.flowers += prevCost;
       this.state.prices['r1-drone'] = prevCost;
       this.state._notify();
       this.showToast('Placement cancelled, flowers refunded.');
+    });
+
+    document.getElementById('buy-global-dock').addEventListener('click', () => {
+      if (this.state.buyGlobalDock()) {
+        this.droneManager.applyGlobalDock();
+        this.showToast('Drone Dock installed! 1s cooldown for all R1s.');
+      } else {
+        this.showToast('Not enough flowers!');
+      }
+    });
+
+    document.getElementById('buy-global-speed').addEventListener('click', () => {
+      if (this.state.buyGlobalSpeed()) {
+        this.showToast(`Propeller+ upgraded for all R1s! Lv.${this.state.droneSpeedLevel}`);
+      } else {
+        this.showToast('Not enough flowers!');
+      }
+    });
+
+    document.getElementById('buy-global-harvest').addEventListener('click', () => {
+      if (this.state.buyGlobalHarvest()) {
+        this.showToast(`Harvester+ upgraded for all R1s! Lv.${this.state.droneHarvestLevel}`);
+      } else {
+        this.showToast('Not enough flowers!');
+      }
     });
   }
 
@@ -95,6 +149,33 @@ export class UI {
       if (this.state.buySpawnSpeed()) {
         const interval = this.state.getSpawnInterval();
         this.showToast(`Spawn speed upgraded! Now ${interval}s`);
+      } else {
+        this.showToast('Not enough flowers!');
+      }
+    });
+
+    document.getElementById('buy-spawn-batch').addEventListener('click', () => {
+      if (this.state.buySpawnBatch()) {
+        const expected = this.state.getSpawnBatchExpected();
+        this.showToast(`Batch spawns upgraded! Avg ~${expected} per cycle`);
+      } else {
+        this.showToast('Not enough flowers!');
+      }
+    });
+
+    document.getElementById('buy-flower-value').addEventListener('click', () => {
+      if (this.state.buyFlowerValue()) {
+        const val = this.state.getFlowerBaseValue();
+        this.showToast(`Flower value upgraded! Now ${val} per flower`);
+      } else {
+        this.showToast('Not enough flowers!');
+      }
+    });
+
+    document.getElementById('buy-flower-multi').addEventListener('click', () => {
+      if (this.state.buyFlowerMultiplier()) {
+        const mul = this.state.getFlowerMultiplier();
+        this.showToast(`Multiplier upgraded! Now ${mul}x`);
       } else {
         this.showToast('Not enough flowers!');
       }
@@ -136,12 +217,9 @@ export class UI {
       return;
     }
 
-    const parts = ['R1'];
-    if (drone.hasDock) parts.push('Dock');
-    if (drone.speedLevel > 0) parts.push(`P+${drone.speedLevel}`);
-    if (drone.harvestLevel > 0) parts.push(`H+${drone.harvestLevel}`);
     const num = this.selectedDroneIdx + 1;
-    this.dronePopupTitle.textContent = `${parts.join(' · ')} #${num}`;
+    const label = drone.isUltimate ? `✨ Ultimate R1 #${num}` : `R1 #${num}`;
+    this.dronePopupTitle.textContent = label;
 
     const stateLabels = {
       idle: '💤 Idle',
@@ -150,122 +228,50 @@ export class UI {
       returning: '↩️ Returning',
       cooling: '⏳ Cooling',
     };
-    const cooldownInfo = drone.hasDock ? '3s cd' : '7s cd';
     const spd = this.droneManager.getDroneSpeed(drone).toFixed(1);
     const ht = this.droneManager.getDroneHarvestTime(drone).toFixed(1);
-    this.dronePopupStatus.textContent = `${stateLabels[drone.state] || drone.state} · ${cooldownInfo} · ${spd} spd · ${ht}s harvest`;
-
-    const dockCost = this.state.prices['r1-dock'];
-    const canAffordDock = this.state.canAfford('r1-dock');
-    const speedCost = this.state.prices['drone-speed'];
-    const canAffordSpeed = this.state.canAfford('drone-speed');
-    const harvestCost = this.state.prices['drone-harvest'];
-    const canAffordHarvest = this.state.canAfford('drone-harvest');
-
-    const speed = this.droneManager.getDroneSpeed(drone);
-    const harvestTime = this.droneManager.getDroneHarvestTime(drone);
-    const maxSpeed = drone.speedLevel >= 5;
-    const maxHarvest = harvestTime <= 0.5;
+    const cd = this.droneManager.getDroneCooldown(drone).toFixed(1);
+    this.dronePopupStatus.textContent = `${stateLabels[drone.state] || drone.state} · ${spd} spd · ${ht}s harvest · ${cd}s cd`;
 
     let upgradesHtml = '';
 
-    // Dock
-    if (drone.hasDock) {
+    if (drone.isUltimate) {
       upgradesHtml += `<div class="popup-upgrade">
-        <div class="item-icon" style="font-size:18px;width:32px;height:32px;">🏗️</div>
+        <div class="item-icon" style="font-size:18px;width:32px;height:32px;">🌈</div>
         <div class="popup-upgrade-info">
-          <div class="popup-upgrade-name">Drone Dock</div>
-          <div class="popup-upgrade-desc">3s cooldown active</div>
+          <div class="popup-upgrade-name">Ultimate R1</div>
+          <div class="popup-upgrade-desc">3x all stats · Rainbow Holo</div>
         </div>
-        <span class="popup-upgrade-done">✓ Installed</span>
+        <span class="popup-upgrade-done">✓ Active</span>
       </div>`;
     } else {
+      const ultCost = this.state.prices['r1-ultimate'];
+      const canAfford = this.state.canAfford('r1-ultimate');
       upgradesHtml += `<div class="popup-upgrade">
-        <div class="item-icon" style="font-size:18px;width:32px;height:32px;">🏗️</div>
+        <div class="item-icon" style="font-size:18px;width:32px;height:32px;">🌈</div>
         <div class="popup-upgrade-info">
-          <div class="popup-upgrade-name">Drone Dock</div>
-          <div class="popup-upgrade-desc">Reduces cooldown to 3s</div>
+          <div class="popup-upgrade-name">Ultimate R1</div>
+          <div class="popup-upgrade-desc">3x speed, 3x harvest, 3x cooldown · Rainbow Holo mode</div>
         </div>
-        <button class="buy-btn popup-buy-dock${canAffordDock ? '' : ' cannot-afford'}">${dockCost} 🌸</button>
+        <button class="buy-btn popup-buy-ultimate${canAfford ? '' : ' cannot-afford'}">${ultCost} 🌸</button>
       </div>`;
     }
 
-    // Speed
-    upgradesHtml += `<div class="popup-upgrade">
-      <div class="item-icon" style="font-size:18px;width:32px;height:32px;">💨</div>
-      <div class="popup-upgrade-info">
-        <div class="popup-upgrade-name">Propeller+${maxSpeed ? ' MAX' : ''}</div>
-        <div class="popup-upgrade-desc">Lv.${drone.speedLevel} — ${speed.toFixed(1)} speed</div>
-      </div>
-      ${maxSpeed
-        ? '<span class="popup-upgrade-done">MAX</span>'
-        : `<button class="buy-btn popup-buy-speed${canAffordSpeed ? '' : ' cannot-afford'}">${speedCost} 🌸</button>`}
-    </div>`;
-
-    // Harvest
-    upgradesHtml += `<div class="popup-upgrade">
-      <div class="item-icon" style="font-size:18px;width:32px;height:32px;">⚙️</div>
-      <div class="popup-upgrade-info">
-        <div class="popup-upgrade-name">Harvester+${maxHarvest ? ' MAX' : ''}</div>
-        <div class="popup-upgrade-desc">Lv.${drone.harvestLevel} — ${harvestTime.toFixed(1)}s harvest</div>
-      </div>
-      ${maxHarvest
-        ? '<span class="popup-upgrade-done">MAX</span>'
-        : `<button class="buy-btn popup-buy-harvest${canAffordHarvest ? '' : ' cannot-afford'}">${harvestCost} 🌸</button>`}
-    </div>`;
-
     this.dronePopupUpgrades.innerHTML = upgradesHtml;
-
     this._bindPopupUpgradeButtons();
   }
 
   _bindPopupUpgradeButtons() {
-    const dockBtn = this.dronePopupUpgrades.querySelector('.popup-buy-dock');
-    if (dockBtn) {
-      dockBtn.addEventListener('click', () => {
-        const cost = this.state.prices['r1-dock'];
+    const ultBtn = this.dronePopupUpgrades.querySelector('.popup-buy-ultimate');
+    if (ultBtn) {
+      ultBtn.addEventListener('click', () => {
+        const cost = this.state.prices['r1-ultimate'];
         if (!this.state.spendFlowers(cost)) {
           this.showToast('Not enough flowers!');
           return;
         }
-        if (this.droneManager.upgradeDroneDock(this.selectedDroneIdx)) {
-          this.showToast('Dock installed! Cooldown reduced to 3s.');
-          this.state._notify();
-          this.renderDronePopup();
-        }
-      });
-    }
-
-    const speedBtn = this.dronePopupUpgrades.querySelector('.popup-buy-speed');
-    if (speedBtn) {
-      speedBtn.addEventListener('click', () => {
-        const cost = this.state.prices['drone-speed'];
-        if (!this.state.spendFlowers(cost)) {
-          this.showToast('Not enough flowers!');
-          return;
-        }
-        if (this.droneManager.upgradeDroneSpeed(this.selectedDroneIdx)) {
-          this.state.prices['drone-speed'] = this.state.devMode ? 1 : Math.floor(this.state.prices['drone-speed'] * 1.5);
-          const spd = this.droneManager.getDroneSpeed(this.droneManager.getDrones()[this.selectedDroneIdx]);
-          this.showToast(`Propeller upgraded! Speed: ${spd.toFixed(1)}`);
-          this.state._notify();
-          this.renderDronePopup();
-        }
-      });
-    }
-
-    const harvestBtn = this.dronePopupUpgrades.querySelector('.popup-buy-harvest');
-    if (harvestBtn) {
-      harvestBtn.addEventListener('click', () => {
-        const cost = this.state.prices['drone-harvest'];
-        if (!this.state.spendFlowers(cost)) {
-          this.showToast('Not enough flowers!');
-          return;
-        }
-        if (this.droneManager.upgradeDroneHarvest(this.selectedDroneIdx)) {
-          this.state.prices['drone-harvest'] = this.state.devMode ? 1 : Math.floor(this.state.prices['drone-harvest'] * 1.5);
-          const ht = this.droneManager.getDroneHarvestTime(this.droneManager.getDrones()[this.selectedDroneIdx]);
-          this.showToast(`Harvester upgraded! ${ht.toFixed(1)}s harvest time`);
+        if (this.droneManager.upgradeDroneUltimate(this.selectedDroneIdx)) {
+          this.showToast('🌈 Ultimate R1 activated! 3x all stats!');
           this.state._notify();
           this.renderDronePopup();
         }
@@ -309,29 +315,103 @@ export class UI {
   updateDisplay() {
     this.flowerCountEl.textContent = Math.floor(this.state.flowers);
 
-    // Drone shop
+    // Buy R1 button
     this.costEl.textContent = this.state.prices['r1-drone'] + ' 🌸';
-    this.ownedEl.textContent = 'Owned: ' + this.state.dronesOwned;
-    this.buyBtn.classList.toggle('cannot-afford', !this.state.canAfford('r1-drone'));
+    this.buyR1Btn.classList.toggle('cannot-afford', !this.state.canAfford('r1-drone'));
+
+    // Global drone upgrades
+    const hasDock = this.state.dockLevel >= 1;
+    this.dockLevelEl.textContent = hasDock ? `Installed — ${UPG.dock.cooldown}s cooldown` : 'Not installed';
+    const dockBtn = document.getElementById('buy-global-dock');
+    if (hasDock) {
+      dockBtn.textContent = '✓ Owned';
+      dockBtn.classList.add('cannot-afford');
+    } else {
+      this.dockCostEl.textContent = this.state.prices['r1-dock'] + ' 🌸';
+      dockBtn.classList.toggle('cannot-afford', !this.state.canAfford('r1-dock'));
+    }
+
+    const spdLvl = this.state.droneSpeedLevel;
+    const maxSpd = spdLvl >= UPG.propeller.maxLevel;
+    const spdVal = (R1.baseSpeed + spdLvl * UPG.propeller.speedPerLevel).toFixed(1);
+    this.globalSpeedLevelEl.textContent = maxSpd ? `${spdLvl}/${UPG.propeller.maxLevel} — MAX` : `${spdLvl}/${UPG.propeller.maxLevel} — ${spdVal} speed`;
+    this.globalSpeedCostEl.textContent = this.state.prices['drone-speed'] + ' 🌸';
+    const spdBtn = document.getElementById('buy-global-speed');
+    spdBtn.classList.toggle('cannot-afford', !this.state.canAfford('drone-speed') || maxSpd);
+    if (maxSpd) spdBtn.textContent = 'MAX';
+
+    const hvLvl = this.state.droneHarvestLevel;
+    const hvMax = UPG.harvester.maxLevel || 99;
+    const hvVal = Math.max(UPG.harvester.minHarvestTime, R1.baseHarvestTime - hvLvl * UPG.harvester.reductionPerLevel).toFixed(1);
+    const maxHv = hvLvl >= hvMax || parseFloat(hvVal) <= UPG.harvester.minHarvestTime;
+    this.globalHarvestLevelEl.textContent = maxHv ? `${hvLvl}/${hvMax} — MAX` : `${hvLvl}/${hvMax} — ${hvVal}s harvest`;
+    this.globalHarvestCostEl.textContent = this.state.prices['drone-harvest'] + ' 🌸';
+    const hvBtn = document.getElementById('buy-global-harvest');
+    hvBtn.classList.toggle('cannot-afford', !this.state.canAfford('drone-harvest') || maxHv);
+    if (maxHv) hvBtn.textContent = 'MAX';
 
     // Spawn speed upgrade
     const interval = this.state.getSpawnInterval();
-    const maxSpawn = interval <= 2;
+    const spawnMax = this.state.getSpawnSpeedMaxLevel();
+    const maxSpawn = this.state.spawnSpeedLevel >= spawnMax;
     this.spawnLevelEl.textContent = maxSpawn
-      ? `Level ${this.state.spawnSpeedLevel} — MAX`
-      : `Level ${this.state.spawnSpeedLevel} — ${interval}s interval`;
+      ? `${this.state.spawnSpeedLevel}/${spawnMax} — MAX`
+      : `${this.state.spawnSpeedLevel}/${spawnMax} — ${interval.toFixed(1)}s interval`;
     this.spawnCostEl.textContent = this.state.prices['spawn-speed'] + ' 🌸';
     const spawnBtn = document.getElementById('buy-spawn-speed');
     spawnBtn.classList.toggle('cannot-afford', !this.state.canAfford('spawn-speed') || maxSpawn);
     if (maxSpawn) spawnBtn.textContent = 'MAX';
 
+    // Batch spawn upgrade
+    const batchExpected = this.state.getSpawnBatchExpected();
+    const batchMax = this.state.getSpawnBatchMaxLevel();
+    const maxBatch = this.state.spawnBatchLevel >= batchMax;
+    const batchLvl = this.state.spawnBatchLevel;
+    const bu = CONFIG.collectibles.flowers.batchUpgrade;
+    if (maxBatch) {
+      this.batchLevelEl.textContent = `${batchLvl}/${batchMax} — MAX`;
+    } else if (batchLvl < bu.guaranteed.length) {
+      this.batchLevelEl.textContent = `${batchLvl}/${batchMax} — ${bu.guaranteed[batchLvl]} per cycle`;
+    } else {
+      this.batchLevelEl.textContent = `${batchLvl}/${batchMax} — avg ~${batchExpected} per cycle`;
+    }
+    this.batchCostEl.textContent = this.state.prices['spawn-batch'] + ' 🌸';
+    const batchBtn = document.getElementById('buy-spawn-batch');
+    batchBtn.classList.toggle('cannot-afford', !this.state.canAfford('spawn-batch') || maxBatch);
+    if (maxBatch) batchBtn.textContent = 'MAX';
+
+    // Flower value upgrade
+    const flowerVal = this.state.getFlowerBaseValue();
+    const valueMax = this.state.getFlowerValueMaxLevel();
+    const maxValue = this.state.flowerValueLevel >= valueMax;
+    this.valueLevelEl.textContent = maxValue
+      ? `${this.state.flowerValueLevel}/${valueMax} — MAX`
+      : `${this.state.flowerValueLevel}/${valueMax} — ${flowerVal} per flower`;
+    this.valueCostEl.textContent = this.state.prices['flower-value'] + ' 🌸';
+    const valueBtn = document.getElementById('buy-flower-value');
+    valueBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-value') || maxValue);
+    if (maxValue) valueBtn.textContent = 'MAX';
+
+    // Multiplier upgrade
+    const flowerMul = this.state.getFlowerMultiplier();
+    const multiMax = this.state.getFlowerMultiplierMaxLevel();
+    const maxMulti = this.state.flowerMultiplierLevel >= multiMax;
+    this.multiLevelEl.textContent = maxMulti
+      ? `${this.state.flowerMultiplierLevel}/${multiMax} — MAX`
+      : `${this.state.flowerMultiplierLevel}/${multiMax} — ${flowerMul}x`;
+    this.multiCostEl.textContent = this.state.prices['flower-multi'] + ' 🌸';
+    const multiBtn = document.getElementById('buy-flower-multi');
+    multiBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-multi') || maxMulti);
+    if (maxMulti) multiBtn.textContent = 'MAX';
+
     // Mega flower upgrade
     const chance = Math.round(this.state.getMegaFlowerChance() * 100);
-    const maxMega = chance >= 60;
-    const val = this.state.getMegaFlowerValue();
+    const megaMax = this.state.getMegaMaxLevel();
+    const maxMega = this.state.megaFlowerLevel >= megaMax;
+    const megaVal = this.state.getMegaFlowerValue();
     this.megaLevelEl.textContent = maxMega
-      ? `Level ${this.state.megaFlowerLevel} — MAX (${val}🌸 each)`
-      : `Level ${this.state.megaFlowerLevel} — ${chance}% chance (${val}🌸 each)`;
+      ? `${this.state.megaFlowerLevel}/${megaMax} — MAX (${chance}%, ${megaVal}x)`
+      : `${this.state.megaFlowerLevel}/${megaMax} — ${chance}% chance (${megaVal}x value)`;
     this.megaCostEl.textContent = this.state.prices['mega-flower'] + ' 🌸';
     const megaBtn = document.getElementById('buy-mega-flower');
     megaBtn.classList.toggle('cannot-afford', !this.state.canAfford('mega-flower') || maxMega);
@@ -341,18 +421,36 @@ export class UI {
     if (this.state.spawnSpeedLevel > 0) {
       this.badgeSpawn.classList.remove('hidden');
       this.badgeSpawnVal.textContent = this.state.spawnSpeedLevel;
-      this.badgeSpawnTip.textContent = `Faster Spawns Lv.${this.state.spawnSpeedLevel} — ${interval}s between flowers`;
+      this.badgeSpawnTip.textContent = `Faster Spawns ${this.state.spawnSpeedLevel}/${spawnMax} — ${interval.toFixed(1)}s`;
+    }
+    if (this.state.spawnBatchLevel > 0) {
+      this.badgeBatch.classList.remove('hidden');
+      this.badgeBatchVal.textContent = this.state.spawnBatchLevel;
+      const batchTipText = batchLvl < bu.guaranteed.length
+        ? `Batch Spawns ${batchLvl}/${batchMax} — ${bu.guaranteed[batchLvl]} per cycle`
+        : `Batch Spawns ${batchLvl}/${batchMax} — avg ~${batchExpected}, up to ${bu.maxCount}`;
+      this.badgeBatchTip.textContent = batchTipText;
+    }
+    if (this.state.flowerValueLevel > 0) {
+      this.badgeValue.classList.remove('hidden');
+      this.badgeValueVal.textContent = this.state.flowerValueLevel;
+      this.badgeValueTip.textContent = `Flower Value ${this.state.flowerValueLevel}/${valueMax} — ${flowerVal} per flower`;
+    }
+    if (this.state.flowerMultiplierLevel > 0) {
+      this.badgeMulti.classList.remove('hidden');
+      this.badgeMultiVal.textContent = this.state.flowerMultiplierLevel;
+      this.badgeMultiTip.textContent = `Multiplier ${this.state.flowerMultiplierLevel}/${multiMax} — ${flowerMul}x`;
     }
     if (this.state.megaFlowerLevel > 0) {
       this.badgeMega.classList.remove('hidden');
       this.badgeMegaVal.textContent = this.state.megaFlowerLevel;
-      this.badgeMegaTip.textContent = `Mega Flowers Lv.${this.state.megaFlowerLevel} — ${chance}% chance, worth ${val}🌸`;
+      this.badgeMegaTip.textContent = `Mega Flowers ${this.state.megaFlowerLevel}/${megaMax} — ${chance}% chance`;
     }
     if (this.state.dronesOwned > 0) {
       this.badgeDrones.classList.remove('hidden');
       this.badgeDronesVal.textContent = this.state.dronesOwned;
-      const dockedCount = this.droneManager.getDrones().filter((d) => d.hasDock).length;
-      this.badgeDronesTip.textContent = `${this.state.dronesOwned} drone${this.state.dronesOwned > 1 ? 's' : ''}, ${dockedCount} docked`;
+      const ultCount = this.droneManager.getDrones().filter((d) => d.isUltimate).length;
+      this.badgeDronesTip.textContent = `${this.state.dronesOwned} drone${this.state.dronesOwned > 1 ? 's' : ''}${ultCount > 0 ? `, ${ultCount} ultimate` : ''}`;
     }
 
     if (this.selectedDroneIdx >= 0) this.renderDronePopup();
@@ -365,6 +463,11 @@ export class UI {
       this.state.computeFlowersPerSecond();
       this.fpsEl.textContent = `(${this.state.flowersPerSecond}/s)`;
     }
+
+    const counts = this.flowerManager.getCounts();
+    this.mapFlowerCountEl.textContent = counts.total;
+    this.mapFlowerMaxEl.textContent = counts.max;
+    this.mapFlowersEl.classList.toggle('at-cap', counts.total >= counts.max);
 
     if (this.selectedDroneIdx >= 0) {
       this.updatePopupPosition();

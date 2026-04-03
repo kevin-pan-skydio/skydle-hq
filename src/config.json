@@ -1,0 +1,86 @@
+{
+  "world": {
+    "gridSize": 10
+  },
+  "collectibles": {
+    "flowers": {
+      "baseSpawnInterval": 8.0,
+      "initialSpawnCount": 2,
+      "maxByGridSize": {
+        "10": 50,
+        "11": 65,
+        "12": 80,
+        "13": 100,
+        "14": 125,
+        "15": 150
+      },
+      "spawnUpgrade": {
+        "maxLevel": 25,
+        "minInterval": 2.0,
+        "price": { "base": 15, "scale": 1.16 }
+      },
+      "batchUpgrade": {
+        "maxLevel": 25,
+        "maxCount": 15,
+        "guaranteed": [1, 2, 3],
+        "postGuaranteedMin": 3,
+        "maxRollProb": 0.82,
+        "price": { "base": 12, "scale": 1.18 }
+      },
+      "valueUpgrade": {
+        "maxLevel": 25,
+        "baseValue": 1,
+        "maxValue": 100,
+        "curve": 1.5,
+        "price": { "base": 5, "scale": 1.25 }
+      },
+      "multiplierUpgrade": {
+        "maxLevel": 25,
+        "baseMultiplier": 1,
+        "maxMultiplier": 5,
+        "price": { "base": 8, "scale": 1.22 }
+      },
+      "megaUpgrade": {
+        "maxLevel": 5,
+        "chancePerLevel": 0.1,
+        "megaValue": 5,
+        "price": { "base": 120, "scale": 2.5 }
+      }
+    }
+  },
+  "drones": {
+    "r1": {
+      "baseSpeed": 2.1,
+      "baseHarvestTime": 4.3,
+      "cooldown": 10.0,
+      "flightHeight": 2.5,
+      "groundHeight": 0.25,
+      "price": { "base": 12, "scale": 1.55 },
+      "upgrades": {
+        "dock": {
+          "cooldown": 1.0,
+          "price": { "base": 12000 }
+        },
+        "propeller": {
+          "speedPerLevel": 1.5,
+          "maxLevel": 5,
+          "price": { "base": 25, "scale": 1.6 }
+        },
+        "harvester": {
+          "reductionPerLevel": 0.5,
+          "minHarvestTime": 0.5,
+          "maxLevel": 8,
+          "price": { "base": 30, "scale": 1.6 }
+        },
+        "ultimate": {
+          "statMultiplier": 3,
+          "price": { "base": 8000 }
+        }
+      }
+    }
+  },
+  "devMode": {
+    "startingFlowers": 999,
+    "allPrices": 1
+  }
+}

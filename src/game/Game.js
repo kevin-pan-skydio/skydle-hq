@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import CONFIG from '../config.json';
 import { World } from './World.js';
 import { FlowerManager } from './FlowerManager.js';
 import { DroneManager } from './DroneManager.js';
@@ -7,13 +8,12 @@ import { UI } from './UI.js';
 import { FloatingTextManager } from './FloatingText.js';
 
 const PIXEL_RATIO = 3;
-const GRID_SIZE = 10;
 
 export class Game {
   constructor() {
     this.canvas = document.getElementById('game-canvas');
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x4a2a6a);
+    this.scene.background = new THREE.Color(0x111111);
 
     this.setupCamera();
     this.setupRenderer();
@@ -21,10 +21,10 @@ export class Game {
 
     this.state = new GameState();
     this.floatingText = new FloatingTextManager(this.scene);
-    this.world = new World(this.scene, GRID_SIZE);
+    this.world = new World(this.scene, CONFIG.world.gridSize);
     this.flowerManager = new FlowerManager(this.scene, this.state, this.world);
     this.droneManager = new DroneManager(this.scene, this.state, this.flowerManager, this.world, this.floatingText);
-    this.ui = new UI(this.state, this.droneManager, this.camera, this.renderer);
+    this.ui = new UI(this.state, this.droneManager, this.flowerManager, this.camera, this.renderer);
 
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
@@ -150,7 +150,8 @@ export class Game {
 
     const flowerHit = this.flowerManager.checkClick(this.raycaster);
     if (flowerHit) {
-      const val = flowerHit.userData.flowerValue || 1;
+      const baseVal = flowerHit.userData.flowerValue || 1;
+      const val = this.state.getCollectionValue(baseVal);
       this.state.addFlowers(val);
       const p = flowerHit.position;
       this.floatingText.spawn(p.x, p.y, p.z, '+' + val);
@@ -175,12 +176,15 @@ export class Game {
 
   start() {
     this.clock = new THREE.Clock();
+    const speedParam = new URLSearchParams(window.location.search).get('speed');
+    this.timeMultiplier = speedParam ? parseFloat(speedParam) : 1;
+    if (isNaN(this.timeMultiplier) || this.timeMultiplier <= 0) this.timeMultiplier = 1;
     this.animate();
   }
 
   animate() {
     requestAnimationFrame(() => this.animate());
-    const dt = this.clock.getDelta();
+    const dt = this.clock.getDelta() * this.timeMultiplier;
 
     this.flowerManager.update(dt);
     this.droneManager.update(dt);

@@ -51,34 +51,60 @@ body.placement-mode::before {
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+#map-flowers {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  color: rgba(255, 255, 255, 0.6);
+  padding: 6px 18px;
+  border-radius: 14px;
+  font-size: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.map-stat.hidden {
+  display: none;
+}
+
+#map-flowers.at-cap {
+  color: rgba(255, 150, 80, 0.9);
+  border-color: rgba(255, 150, 80, 0.3);
 }
 
 #flower-counter {
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
   color: #fff;
-  padding: 10px 24px;
+  padding: 10px 26px;
   border-radius: 24px;
-  font-size: 20px;
+  font-size: 30px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   border: 2px solid rgba(255, 105, 180, 0.4);
 }
 
 #flower-icon {
-  font-size: 24px;
+  font-size: 30px;
 }
 
 #flower-count {
   font-weight: bold;
-  font-size: 24px;
+  font-size: 30px;
   min-width: 40px;
   text-align: center;
 }
 
 #flowers-per-sec {
-  font-size: 13px;
+  font-size: 16px;
   opacity: 0.6;
 }
 
@@ -169,18 +195,56 @@ body.placement-mode::before {
   }
 }
 
-/* Shop Toggle */
-#shop-toggle {
+/* Bottom Buttons */
+#bottom-buttons {
   position: fixed;
   bottom: 20px;
   right: 20px;
   z-index: 10;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+#buy-r1-btn {
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
   color: #fff;
   padding: 12px 20px;
   border-radius: 16px;
-  font-size: 16px;
+  font-size: 22px;
+  cursor: pointer;
+  border: 2px solid rgba(220, 60, 60, 0.4);
+  transition: transform 0.15s, border-color 0.15s;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+#buy-r1-btn:hover {
+  transform: scale(1.05);
+  border-color: rgba(220, 60, 60, 0.8);
+}
+
+#buy-r1-btn.cannot-afford {
+  opacity: 0.5;
+}
+
+#buy-r1-btn .btn-sub {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* Shop Toggle */
+#shop-toggle {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  padding: 14px 24px;
+  border-radius: 16px;
+  font-size: 34px;
   cursor: pointer;
   border: 2px solid rgba(58, 123, 213, 0.4);
   transition: transform 0.15s, border-color 0.15s;
@@ -195,14 +259,14 @@ body.placement-mode::before {
 /* Shop Panel */
 #shop {
   position: fixed;
-  bottom: 70px;
+  bottom: 90px;
   right: 20px;
   z-index: 20;
   background: rgba(15, 15, 25, 0.92);
   backdrop-filter: blur(8px);
   border-radius: 16px;
   border: 2px solid rgba(58, 123, 213, 0.3);
-  width: 320px;
+  width: 400px;
   max-height: 70vh;
   color: #fff;
   overflow: hidden;
@@ -244,10 +308,10 @@ body.placement-mode::before {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.5);
-  padding: 6px 14px;
+  padding: 8px 18px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 18px;
   font-family: inherit;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
@@ -271,7 +335,7 @@ body.placement-mode::before {
   background: none;
   border: none;
   color: #888;
-  font-size: 18px;
+  font-size: 22px;
   cursor: pointer;
   padding: 4px 8px;
   font-family: inherit;
@@ -299,9 +363,9 @@ body.placement-mode::before {
 }
 
 .item-icon {
-  font-size: 28px;
-  width: 44px;
-  height: 44px;
+  font-size: 36px;
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -316,12 +380,12 @@ body.placement-mode::before {
 }
 
 .item-name {
-  font-size: 14px;
+  font-size: 20px;
   font-weight: bold;
 }
 
 .item-desc {
-  font-size: 11px;
+  font-size: 15px;
   opacity: 0.5;
   margin-top: 2px;
 }
@@ -330,10 +394,10 @@ body.placement-mode::before {
   background: rgba(58, 123, 213, 0.3);
   border: 1px solid rgba(58, 123, 213, 0.5);
   color: #fff;
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 16px;
   font-family: inherit;
   white-space: nowrap;
   transition: background 0.15s, transform 0.1s;
@@ -431,9 +495,24 @@ body.placement-mode::before {
 }
 
 .item-owned {
-  font-size: 11px;
+  font-size: 14px;
   opacity: 0.4;
   margin-top: 2px;
+}
+
+.shop-item.dock-mega {
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 200, 50, 0.2);
+  padding-top: 14px;
+}
+
+.shop-item.dock-mega .item-name {
+  color: #ffd700;
+}
+
+.shop-item.dock-mega .item-icon {
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
 

@@ -1,9 +1,13 @@
 import * as THREE from 'three';
+import CONFIG from '../config.json';
 
 const FLOWER_COLORS = [0xff69b4, 0xff4081, 0xffeb3b, 0xff9800, 0xe040fb, 0xf44336, 0xffffff];
 const MEGA_COLOR = 0xff00ff;
-const MAX_FLOWERS = 30;
-const MIN_DISTANCE = 1.2;
+const F = CONFIG.collectibles.flowers;
+
+function lookupMax(table, gridSize) {
+  return table[gridSize] || table[Object.keys(table).pop()];
+}
 
 let nextId = 0;
 
@@ -67,8 +71,9 @@ export class FlowerManager {
     const offset = ((gs - 1) * step) / 2;
     this.spawnHalf = offset + 0.8;
 
-    this.spawnFlower();
-    this.spawnFlower();
+    for (let i = 0; i < F.initialSpawnCount; i++) {
+      this.spawnFlower();
+    }
   }
 
   _randomPos() {
@@ -79,35 +84,21 @@ export class FlowerManager {
     };
   }
 
-  _tooClose(x, z) {
-    for (const f of this.flowers) {
-      const dx = f.mesh.position.x - x;
-      const dz = f.mesh.position.z - z;
-      if (dx * dx + dz * dz < MIN_DISTANCE * MIN_DISTANCE) return true;
-    }
-    return false;
-  }
-
   spawnFlower() {
-    if (this.flowers.length >= MAX_FLOWERS) return;
-
-    let x, z;
-    for (let attempt = 0; attempt < 30; attempt++) {
-      const p = this._randomPos();
-      x = p.x;
-      z = p.z;
-      if (!this._tooClose(x, z)) break;
-      if (attempt === 29) return;
-    }
+    const gs = this.world.gridSize;
+    const max = lookupMax(F.maxByGridSize, gs);
+    if (this.flowers.length >= max) return;
 
     const megaChance = this.state.getMegaFlowerChance();
     const isMega = Math.random() < megaChance;
+
+    const p = this._randomPos();
 
     const color = isMega
       ? MEGA_COLOR
       : FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
     const mesh = createFlower(color, isMega);
-    mesh.position.set(x, 0.01, z);
+    mesh.position.set(p.x, 0.01, p.z);
     mesh.scale.set(0, 0, 0);
 
     const id = nextId++;
@@ -129,7 +120,10 @@ export class FlowerManager {
     const interval = this.state.getSpawnInterval();
     if (this.spawnTimer >= interval) {
       this.spawnTimer = 0;
-      this.spawnFlower();
+      const batch = this.state.getSpawnBatchCount();
+      for (let i = 0; i < batch; i++) {
+        this.spawnFlower();
+      }
     }
 
     for (const flower of this.flowers) {
@@ -203,6 +197,14 @@ export class FlowerManager {
   getFlowerValue(id) {
     const f = this.flowers.find((fl) => fl.id === id);
     return f ? f.value : 1;
+  }
+
+  getCounts() {
+    const gs = this.world.gridSize;
+    return {
+      total: this.flowers.length,
+      max: lookupMax(F.maxByGridSize, gs),
+    };
   }
 
   getAvailableFlowers() {

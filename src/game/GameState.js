@@ -1,24 +1,52 @@
+import CONFIG from '../config.json';
+
+const R1 = CONFIG.drones.r1;
+const UPG = R1.upgrades;
+const FLOWERS = CONFIG.collectibles.flowers;
+
 export class GameState {
   constructor() {
     this.devMode = new URLSearchParams(window.location.search).has('dev');
+    const dev = this.devMode;
+    const d = CONFIG.devMode.allPrices;
 
-    this.flowers = this.devMode ? 999 : 0;
+    this.flowers = dev ? CONFIG.devMode.startingFlowers : 0;
     this.totalFlowersCollected = 0;
     this.flowersPerSecond = 0;
 
     this.dronesOwned = 0;
+    this.dockLevel = 0;
+    this.droneSpeedLevel = 0;
+    this.droneHarvestLevel = 0;
 
-    // Map upgrades
     this.spawnSpeedLevel = 0;
+    this.spawnBatchLevel = 0;
+    this.flowerValueLevel = 0;
+    this.flowerMultiplierLevel = 0;
     this.megaFlowerLevel = 0;
 
     this.prices = {
-      'r1-drone': this.devMode ? 1 : 20,
-      'r1-dock': this.devMode ? 1 : 30,
-      'drone-speed': this.devMode ? 1 : 15,
-      'drone-harvest': this.devMode ? 1 : 20,
-      'spawn-speed': this.devMode ? 1 : 25,
-      'mega-flower': this.devMode ? 1 : 40,
+      'r1-drone': dev ? d : R1.price.base,
+      'r1-dock': dev ? d : R1.upgrades.dock.price.base,
+      'drone-speed': dev ? d : R1.upgrades.propeller.price.base,
+      'drone-harvest': dev ? d : R1.upgrades.harvester.price.base,
+      'r1-ultimate': dev ? d : R1.upgrades.ultimate.price.base,
+      'spawn-speed': dev ? d : FLOWERS.spawnUpgrade.price.base,
+      'spawn-batch': dev ? d : FLOWERS.batchUpgrade.price.base,
+      'flower-value': dev ? d : FLOWERS.valueUpgrade.price.base,
+      'flower-multi': dev ? d : FLOWERS.multiplierUpgrade.price.base,
+      'mega-flower': dev ? d : FLOWERS.megaUpgrade.price.base,
+    };
+
+    this._priceScales = {
+      'r1-drone': R1.price.scale,
+      'drone-speed': R1.upgrades.propeller.price.scale,
+      'drone-harvest': R1.upgrades.harvester.price.scale,
+      'spawn-speed': FLOWERS.spawnUpgrade.price.scale,
+      'spawn-batch': FLOWERS.batchUpgrade.price.scale,
+      'flower-value': FLOWERS.valueUpgrade.price.scale,
+      'flower-multi': FLOWERS.multiplierUpgrade.price.scale,
+      'mega-flower': FLOWERS.megaUpgrade.price.scale,
     };
 
     this._listeners = [];
@@ -51,45 +79,181 @@ export class GameState {
     return this.flowers >= (this.prices[item] || Infinity);
   }
 
+  _scalePrice(key) {
+    if (this.devMode) return;
+    const scale = this._priceScales[key];
+    if (scale) this.prices[key] = Math.floor(this.prices[key] * scale);
+  }
+
   buyDrone() {
     const cost = this.prices['r1-drone'];
     if (!this.spendFlowers(cost)) return false;
     this.dronesOwned++;
-    this.prices['r1-drone'] = this.devMode ? 1 : Math.floor(this.prices['r1-drone'] * 1.6);
+    this._scalePrice('r1-drone');
+    this._notify();
+    return true;
+  }
+
+  buyGlobalDock() {
+    if (this.dockLevel >= 1) return false;
+    const cost = this.prices['r1-dock'];
+    if (!this.spendFlowers(cost)) return false;
+    this.dockLevel = 1;
+    this._notify();
+    return true;
+  }
+
+  buyGlobalSpeed() {
+    if (this.droneSpeedLevel >= UPG.propeller.maxLevel) return false;
+    const cost = this.prices['drone-speed'];
+    if (!this.spendFlowers(cost)) return false;
+    this.droneSpeedLevel++;
+    this._scalePrice('drone-speed');
+    this._notify();
+    return true;
+  }
+
+  buyGlobalHarvest() {
+    if (UPG.harvester.maxLevel && this.droneHarvestLevel >= UPG.harvester.maxLevel) return false;
+    const cost = this.prices['drone-harvest'];
+    if (!this.spendFlowers(cost)) return false;
+    this.droneHarvestLevel++;
+    this._scalePrice('drone-harvest');
     this._notify();
     return true;
   }
 
   buySpawnSpeed() {
+    const su = FLOWERS.spawnUpgrade;
+    if (this.spawnSpeedLevel >= su.maxLevel) return false;
     const cost = this.prices['spawn-speed'];
     if (!this.spendFlowers(cost)) return false;
     this.spawnSpeedLevel++;
-    this.prices['spawn-speed'] = this.devMode ? 1 : Math.floor(this.prices['spawn-speed'] * 1.8);
+    this._scalePrice('spawn-speed');
     this._notify();
     return true;
+  }
+
+  getSpawnSpeedMaxLevel() {
+    return FLOWERS.spawnUpgrade.maxLevel;
+  }
+
+  buySpawnBatch() {
+    const bu = FLOWERS.batchUpgrade;
+    if (this.spawnBatchLevel >= bu.maxLevel) return false;
+    const cost = this.prices['spawn-batch'];
+    if (!this.spendFlowers(cost)) return false;
+    this.spawnBatchLevel++;
+    this._scalePrice('spawn-batch');
+    this._notify();
+    return true;
+  }
+
+  getSpawnBatchMaxLevel() {
+    return FLOWERS.batchUpgrade.maxLevel;
+  }
+
+  getSpawnBatchCount() {
+    const bu = FLOWERS.batchUpgrade;
+    const lvl = this.spawnBatchLevel;
+    if (lvl < bu.guaranteed.length) return bu.guaranteed[lvl];
+
+    const base = bu.postGuaranteedMin;
+    const extraSlots = bu.maxCount - base;
+    const p = ((lvl - bu.guaranteed.length + 1) / (bu.maxLevel - bu.guaranteed.length + 1)) * bu.maxRollProb;
+    let count = base;
+    for (let i = 0; i < extraSlots; i++) {
+      if (Math.random() < p) count++;
+    }
+    return count;
+  }
+
+  getSpawnBatchExpected() {
+    const bu = FLOWERS.batchUpgrade;
+    const lvl = this.spawnBatchLevel;
+    if (lvl < bu.guaranteed.length) return bu.guaranteed[lvl];
+
+    const base = bu.postGuaranteedMin;
+    const extraSlots = bu.maxCount - base;
+    const p = ((lvl - bu.guaranteed.length + 1) / (bu.maxLevel - bu.guaranteed.length + 1)) * bu.maxRollProb;
+    return Math.round((base + extraSlots * p) * 10) / 10;
+  }
+
+  buyFlowerValue() {
+    const vu = FLOWERS.valueUpgrade;
+    if (this.flowerValueLevel >= vu.maxLevel) return false;
+    const cost = this.prices['flower-value'];
+    if (!this.spendFlowers(cost)) return false;
+    this.flowerValueLevel++;
+    this._scalePrice('flower-value');
+    this._notify();
+    return true;
+  }
+
+  getFlowerValueMaxLevel() {
+    return FLOWERS.valueUpgrade.maxLevel;
+  }
+
+  getFlowerBaseValue() {
+    const vu = FLOWERS.valueUpgrade;
+    const t = this.flowerValueLevel / vu.maxLevel;
+    const curved = Math.pow(t, vu.curve || 1);
+    return Math.max(1 + this.flowerValueLevel, Math.round(vu.baseValue + (vu.maxValue - vu.baseValue) * curved));
+  }
+
+  buyFlowerMultiplier() {
+    const mu = FLOWERS.multiplierUpgrade;
+    if (this.flowerMultiplierLevel >= mu.maxLevel) return false;
+    const cost = this.prices['flower-multi'];
+    if (!this.spendFlowers(cost)) return false;
+    this.flowerMultiplierLevel++;
+    this._scalePrice('flower-multi');
+    this._notify();
+    return true;
+  }
+
+  getFlowerMultiplierMaxLevel() {
+    return FLOWERS.multiplierUpgrade.maxLevel;
+  }
+
+  getFlowerMultiplier() {
+    const mu = FLOWERS.multiplierUpgrade;
+    const t = this.flowerMultiplierLevel / mu.maxLevel;
+    return Math.round((mu.baseMultiplier + (mu.maxMultiplier - mu.baseMultiplier) * t) * 10) / 10;
+  }
+
+  getCollectionValue(baseValue) {
+    return Math.round(baseValue * this.getFlowerBaseValue() * this.getFlowerMultiplier());
   }
 
   buyMegaFlower() {
+    const mu = FLOWERS.megaUpgrade;
+    if (this.megaFlowerLevel >= mu.maxLevel) return false;
     const cost = this.prices['mega-flower'];
     if (!this.spendFlowers(cost)) return false;
     this.megaFlowerLevel++;
-    this.prices['mega-flower'] = this.devMode ? 1 : Math.floor(this.prices['mega-flower'] * 2.0);
+    this._scalePrice('mega-flower');
     this._notify();
     return true;
   }
 
+  getMegaMaxLevel() {
+    return FLOWERS.megaUpgrade.maxLevel;
+  }
+
   getSpawnInterval() {
-    // Base 8s, each level reduces by 1s, min 2s
-    return Math.max(2, 8 - this.spawnSpeedLevel);
+    const su = FLOWERS.spawnUpgrade;
+    const range = FLOWERS.baseSpawnInterval - su.minInterval;
+    const t = Math.min(this.spawnSpeedLevel / su.maxLevel, 1);
+    return FLOWERS.baseSpawnInterval - range * t;
   }
 
   getMegaFlowerChance() {
-    // Each level adds 8% chance, max 60%
-    return Math.min(0.6, this.megaFlowerLevel * 0.08);
+    return this.megaFlowerLevel * FLOWERS.megaUpgrade.chancePerLevel;
   }
 
   getMegaFlowerValue() {
-    return 5 + this.megaFlowerLevel;
+    return FLOWERS.megaUpgrade.megaValue;
   }
 
   computeFlowersPerSecond() {

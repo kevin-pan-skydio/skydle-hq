@@ -30,11 +30,11 @@ export class World {
   build() {
     const offset = ((this.gridSize - 1) * STEP) / 2;
 
-    // Single solid black center board
+    // Grass green center board
     const boardSize = this.gridSize * STEP;
     const board = new THREE.Mesh(
       new THREE.BoxGeometry(boardSize, TILE_HEIGHT, boardSize),
-      new THREE.MeshLambertMaterial({ color: 0x1a1a1a })
+      new THREE.MeshLambertMaterial({ color: 0x2d5a1e })
     );
     board.position.set(0, -TILE_HEIGHT / 2, 0);
     board.receiveShadow = true;

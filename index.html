@@ -17,6 +17,9 @@
       <span id="flower-count">0</span>
       <span id="flowers-per-sec">(0/s)</span>
     </div>
+    <div id="map-flowers">
+      <span class="map-stat">🌸 <span id="map-flower-count">0</span>/<span id="map-flower-max">50</span></span>
+    </div>
   </div>
 
   <div id="placement-banner" class="hidden">
@@ -25,7 +28,13 @@
     <button id="cancel-placement">✕ Cancel</button>
   </div>
 
-  <div id="shop-toggle">🛒 Shop</div>
+  <div id="bottom-buttons">
+    <div id="buy-r1-btn">
+      🔴 Buy R1
+      <span class="btn-sub" id="r1-cost">12 🌸</span>
+    </div>
+    <div id="shop-toggle">⬆ Upgrades</div>
+  </div>
 
   <div id="shop" class="hidden">
     <div id="shop-header">
@@ -39,14 +48,36 @@
     <div id="tab-drones" class="shop-tab-content">
       <div id="shop-items">
         <div class="shop-item">
-          <div class="item-icon">🔴</div>
+          <div class="item-icon">💨</div>
           <div class="item-info">
-            <div class="item-name">Skydio R1</div>
-            <div class="item-desc">Flies to flowers and collects them automatically</div>
-            <div class="item-owned" id="drones-owned">Owned: 0</div>
+            <div class="item-name">Propeller+</div>
+            <div class="item-desc">Increases flight speed for all R1s</div>
+            <div class="item-owned" id="global-speed-level">0/5</div>
           </div>
-          <button class="buy-btn" id="buy-r1">
-            <span class="cost" id="r1-cost">20 🌸</span>
+          <button class="buy-btn" id="buy-global-speed">
+            <span class="cost" id="global-speed-cost">10 🌸</span>
+          </button>
+        </div>
+        <div class="shop-item">
+          <div class="item-icon">⚙️</div>
+          <div class="item-info">
+            <div class="item-name">Harvester+</div>
+            <div class="item-desc">Faster harvest for all R1s</div>
+            <div class="item-owned" id="global-harvest-level">Level 0</div>
+          </div>
+          <button class="buy-btn" id="buy-global-harvest">
+            <span class="cost" id="global-harvest-cost">14 🌸</span>
+          </button>
+        </div>
+        <div class="shop-item dock-mega">
+          <div class="item-icon">🏗️</div>
+          <div class="item-info">
+            <div class="item-name">Drone Dock</div>
+            <div class="item-desc">1s recharge for all R1s — game changer</div>
+            <div class="item-owned" id="dock-level">Not installed</div>
+          </div>
+          <button class="buy-btn" id="buy-global-dock">
+            <span class="cost" id="global-dock-cost">1000 🌸</span>
           </button>
         </div>
       </div>
@@ -56,6 +87,28 @@
 
       <div id="shop-items">
         <div class="shop-item">
+          <div class="item-icon">💰</div>
+          <div class="item-info">
+            <div class="item-name">Flower Value</div>
+            <div class="item-desc">Each flower is worth more</div>
+            <div class="item-owned" id="value-level">0/30 — 1 per flower</div>
+          </div>
+          <button class="buy-btn" id="buy-flower-value">
+            <span class="cost" id="flower-value-cost">5 🌸</span>
+          </button>
+        </div>
+        <div class="shop-item">
+          <div class="item-icon">📈</div>
+          <div class="item-info">
+            <div class="item-name">Multiplier</div>
+            <div class="item-desc">Multiply all flower income</div>
+            <div class="item-owned" id="multi-level">0/25 — 1x</div>
+          </div>
+          <button class="buy-btn" id="buy-flower-multi">
+            <span class="cost" id="flower-multi-cost">10 🌸</span>
+          </button>
+        </div>
+        <div class="shop-item">
           <div class="item-icon">⚡</div>
           <div class="item-info">
             <div class="item-name">Faster Spawns</div>
@@ -63,18 +116,29 @@
             <div class="item-owned" id="spawn-level">Level 0 — 8s interval</div>
           </div>
           <button class="buy-btn" id="buy-spawn-speed">
-            <span class="cost" id="spawn-speed-cost">25 🌸</span>
+            <span class="cost" id="spawn-speed-cost">18 🌸</span>
+          </button>
+        </div>
+        <div class="shop-item">
+          <div class="item-icon">🌱</div>
+          <div class="item-info">
+            <div class="item-name">Batch Spawns</div>
+            <div class="item-desc">More flowers per spawn cycle</div>
+            <div class="item-owned" id="batch-level">0/25 — 1 per cycle</div>
+          </div>
+          <button class="buy-btn" id="buy-spawn-batch">
+            <span class="cost" id="spawn-batch-cost">21 🌸</span>
           </button>
         </div>
         <div class="shop-item">
           <div class="item-icon">🌺</div>
           <div class="item-info">
             <div class="item-name">Mega Flowers</div>
-            <div class="item-desc">Chance for flowers worth 5+ each</div>
-            <div class="item-owned" id="mega-level">Level 0 — 0% chance</div>
+            <div class="item-desc">Chance for any flower to be mega (5x value)</div>
+            <div class="item-owned" id="mega-level">0/5 — 0% chance</div>
           </div>
           <button class="buy-btn" id="buy-mega-flower">
-            <span class="cost" id="mega-flower-cost">40 🌸</span>
+            <span class="cost" id="mega-flower-cost">50 🌸</span>
           </button>
         </div>
       </div>
@@ -94,6 +158,18 @@
     <div class="badge hidden" id="badge-spawn">
       ⚡ <span id="badge-spawn-val">0</span>
       <div class="badge-tip" id="badge-spawn-tip">Faster Spawns Lv.0</div>
+    </div>
+    <div class="badge hidden" id="badge-batch">
+      🌱 <span id="badge-batch-val">0</span>
+      <div class="badge-tip" id="badge-batch-tip">Batch Spawns Lv.0</div>
+    </div>
+    <div class="badge hidden" id="badge-value">
+      💰 <span id="badge-value-val">0</span>
+      <div class="badge-tip" id="badge-value-tip">Flower Value Lv.0</div>
+    </div>
+    <div class="badge hidden" id="badge-multi">
+      📈 <span id="badge-multi-val">0</span>
+      <div class="badge-tip" id="badge-multi-tip">Multiplier Lv.0</div>
     </div>
     <div class="badge hidden" id="badge-mega">
       🌺 <span id="badge-mega-val">0</span>

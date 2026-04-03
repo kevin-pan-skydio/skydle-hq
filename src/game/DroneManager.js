@@ -9,6 +9,7 @@ function createR1Drone() {
   const black = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
   const darkGray = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
   const propMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  const skydioBlue = new THREE.MeshLambertMaterial({ color: 0x1a6dcc });
   const blueLed = new THREE.MeshBasicMaterial({ color: 0x2288ff });
 
   // Central fuselage — elongated rounded body
@@ -29,7 +30,6 @@ function createR1Drone() {
 
   // Two rectangular prop guard frames (left and right)
   for (const side of [-1, 1]) {
-    const guardGroup = new THREE.Group();
     const cx = side * 0.6;
     const guardW = 0.75;
     const guardD = 1.05;
@@ -40,17 +40,18 @@ function createR1Drone() {
     for (const fz of [-1, 1]) {
       const bar = new THREE.Mesh(
         new THREE.BoxGeometry(guardW, barH, barThick),
-        black
+        skydioBlue
       );
       bar.position.set(cx, 0.02, fz * guardD * 0.5);
       bar.castShadow = true;
       group.add(bar);
     }
+
     // Left & right side bars
     for (const fx of [-1, 1]) {
       const bar = new THREE.Mesh(
         new THREE.BoxGeometry(barThick, barH, guardD),
-        black
+        skydioBlue
       );
       bar.position.set(cx + fx * guardW * 0.5, 0.02, 0);
       bar.castShadow = true;
@@ -70,7 +71,6 @@ function createR1Drone() {
 
     // Two propeller hubs + blades per guard
     for (const pz of [-0.28, 0.28]) {
-      // Hub
       const hub = new THREE.Mesh(
         new THREE.CylinderGeometry(0.06, 0.06, 0.08, 6),
         darkGray
@@ -78,7 +78,6 @@ function createR1Drone() {
       hub.position.set(cx, 0.1, pz);
       group.add(hub);
 
-      // Propeller blades (5 per rotor)
       for (let b = 0; b < 5; b++) {
         const angle = (b / 5) * Math.PI * 2;
         const blade = new THREE.Mesh(
@@ -363,14 +362,20 @@ export class DroneManager {
 
     this.world.markDockOccupied(dockRow, dockCol);
 
+    const led = mesh.children.find((c) => c.userData.isLed);
+
     const droneObj = {
       mesh,
       harvestBar,
+      led,
+      holoMats: null,
       dockMesh: null,
       dockRow,
       dockCol,
-      homePos: new THREE.Vector3(pos.x, 0, pos.z),
-      targetPos: null,
+      homeX: pos.x,
+      homeZ: pos.z,
+      targetX: 0,
+      targetZ: 0,
       targetId: null,
       cooldown: 0,
       harvestTimer: 0,
@@ -383,7 +388,7 @@ export class DroneManager {
 
     if (this.state.dockLevel > 0) {
       const dockMesh = createDockMesh();
-      dockMesh.position.set(pos.x, 0, pos.z);
+      dockMesh.position.set(droneObj.homeX, 0, droneObj.homeZ);
       this.scene.add(dockMesh);
       droneObj.dockMesh = dockMesh;
     }
@@ -425,7 +430,7 @@ export class DroneManager {
     for (const drone of this.drones) {
       if (!drone.dockMesh) {
         const dockMesh = createDockMesh();
-        dockMesh.position.set(drone.homePos.x, 0, drone.homePos.z);
+        dockMesh.position.set(drone.homeX, 0, drone.homeZ);
         this.scene.add(dockMesh);
         drone.dockMesh = dockMesh;
       }
@@ -441,16 +446,19 @@ export class DroneManager {
   }
 
   _applyRainbowHolo(drone) {
+    const mats = [];
     drone.mesh.traverse((child) => {
       if (child.isMesh && !child.userData.isLed) {
         child.material = child.material.clone();
-        child.userData.holoMat = child.material;
-        child.userData.holoBaseColor = child.material.color.clone();
+        mats.push(child.material);
       }
     });
+    drone.holoMats = mats;
   }
 
   update(dt) {
+    const now = performance.now();
+
     for (const drone of this.drones) {
       const isGrounded = drone.state === 'idle' || drone.state === 'cooling';
 
@@ -463,31 +471,24 @@ export class DroneManager {
         }
       }
 
-      // Rainbow holo color cycling for ultimate drones
-      if (drone.isUltimate) {
-        const t = performance.now() * 0.001;
-        const baseHue = (t * 0.3) % 1;
-        let idx = 0;
-        drone.mesh.traverse((child) => {
-          if (child.userData.holoMat) {
-            const hue = (baseHue + idx * 0.02) % 1;
-            child.userData.holoMat.color.setHSL(hue, 0.7, 0.45);
-            idx++;
-          }
-        });
+      if (drone.holoMats) {
+        const baseHue = (now * 0.0003) % 1;
+        const mats = drone.holoMats;
+        for (let i = 0; i < mats.length; i++) {
+          mats[i].color.setHSL((baseHue + i * 0.02) % 1, 0.7, 0.45);
+        }
       }
 
       if (isGrounded) {
         drone.mesh.position.y = drone.dockMesh ? R1.groundHeight + 0.65 : R1.groundHeight;
       } else {
-        drone.mesh.position.y = R1.flightHeight + Math.sin(performance.now() * 0.003 + drone.mesh.id) * 0.15;
+        drone.mesh.position.y = R1.flightHeight + Math.sin(now * 0.003 + drone.mesh.id) * 0.15;
       }
 
-      // LED indicator: green = ready, pulsing red = cooling
-      const led = drone.mesh.children.find((c) => c.userData.isLed);
+      const led = drone.led;
       if (led) {
         if (drone.state === 'cooling') {
-          const pulse = Math.sin(performance.now() * 0.008) * 0.5 + 0.5;
+          const pulse = Math.sin(now * 0.008) * 0.5 + 0.5;
           led.material.color.setRGB(1, pulse * 0.2, 0);
           led.scale.setScalar(0.8 + pulse * 0.5);
         } else {
@@ -534,27 +535,17 @@ export class DroneManager {
     }
   }
 
-  _findNearestUnreserved(fromPos) {
-    const flowers = this.flowerManager.getAvailableFlowers();
-    let nearest = null;
-    let nearestDist = Infinity;
-    for (const f of flowers) {
-      if (this.reservedIds.has(f.id)) continue;
-      const d = fromPos.distanceTo(f.pos);
-      if (d < nearestDist) {
-        nearestDist = d;
-        nearest = f;
-      }
-    }
-    return nearest;
+  _findNearestUnreserved(fromX, fromZ) {
+    return this.flowerManager.findNearestAvailable(fromX, fromZ, this.reservedIds);
   }
 
   handleIdle(drone) {
-    const nearest = this._findNearestUnreserved(drone.homePos);
+    const nearest = this._findNearestUnreserved(drone.homeX, drone.homeZ);
     if (!nearest) return;
 
     drone.harvestCount = 0;
-    drone.targetPos = nearest.pos;
+    drone.targetX = nearest.x;
+    drone.targetZ = nearest.z;
     drone.targetId = nearest.id;
     this._claim(nearest.id);
     drone.state = 'flying';
@@ -563,49 +554,48 @@ export class DroneManager {
   handleFlying(drone, dt) {
     if (!this.flowerManager.hasFlower(drone.targetId)) {
       this._release(drone);
-      const currentPos = new THREE.Vector3(drone.mesh.position.x, 0, drone.mesh.position.z);
-      const next = this._findNearestUnreserved(currentPos);
+      const next = this._findNearestUnreserved(drone.mesh.position.x, drone.mesh.position.z);
       if (next) {
-        drone.targetPos = next.pos;
+        drone.targetX = next.x;
+        drone.targetZ = next.z;
         drone.targetId = next.id;
         this._claim(next.id);
       } else {
-        drone.targetPos = null;
         drone.targetId = null;
         drone.state = 'returning';
       }
       return;
     }
 
-    const target = new THREE.Vector3(drone.targetPos.x, drone.mesh.position.y, drone.targetPos.z);
-    const dir = target.clone().sub(drone.mesh.position);
-    const dist = new THREE.Vector2(dir.x, dir.z).length();
+    const dx = drone.targetX - drone.mesh.position.x;
+    const dz = drone.targetZ - drone.mesh.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
 
     if (dist < 0.5) {
       const isMega = this.flowerManager.isFlowerMega(drone.targetId);
       drone.harvestTimer = this.getDroneHarvestTime(drone) * (isMega ? 2 : 1);
       drone.state = 'harvesting';
     } else {
-      dir.y = 0;
-      dir.normalize().multiplyScalar(this.getDroneSpeed(drone) * dt);
-      drone.mesh.position.x += dir.x;
-      drone.mesh.position.z += dir.z;
-      drone.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+      const step = this.getDroneSpeed(drone) * dt / dist;
+      const mx = dx * step;
+      const mz = dz * step;
+      drone.mesh.position.x += mx;
+      drone.mesh.position.z += mz;
+      drone.mesh.rotation.y = Math.atan2(mx, mz);
     }
   }
 
   handleHarvesting(drone, dt) {
     if (!this.flowerManager.hasFlower(drone.targetId)) {
       this._release(drone);
-      const currentPos = new THREE.Vector3(drone.mesh.position.x, 0, drone.mesh.position.z);
-      const next = this._findNearestUnreserved(currentPos);
+      const next = this._findNearestUnreserved(drone.mesh.position.x, drone.mesh.position.z);
       if (next) {
-        drone.targetPos = next.pos;
+        drone.targetX = next.x;
+        drone.targetZ = next.z;
         drone.targetId = next.id;
         this._claim(next.id);
         drone.state = 'flying';
       } else {
-        drone.targetPos = null;
         drone.targetId = null;
         drone.state = 'returning';
       }
@@ -614,13 +604,17 @@ export class DroneManager {
 
     drone.harvestTimer -= dt;
     if (drone.harvestTimer <= 0) {
-      const baseVal = this.flowerManager.getFlowerValue(drone.targetId);
       const collected = this.flowerManager.collectById(drone.targetId);
       if (collected) {
-        const val = this.state.getCollectionValue(baseVal);
+        const val = this.state.getCollectionValue(collected.value);
         this.state.addFlowers(val);
-        const p = collected.position;
-        this.floatingText.spawn(p.x, p.y, p.z, '+' + val);
+        if (collected.isMushroom) {
+          const xp = this.state.getMushroomSkillXp();
+          this.state.addSkillXp(xp);
+          this.floatingText.spawn(collected.x, collected.y, collected.z, '+' + val + ' +★' + xp);
+        } else {
+          this.floatingText.spawn(collected.x, collected.y, collected.z, '+' + val);
+        }
         drone.totalHarvested++;
         drone.totalValueHarvested += val;
       }
@@ -628,11 +622,11 @@ export class DroneManager {
       drone.harvestCount++;
 
       const maxHarvests = drone.isUltimate ? UPG.ultimate.harvestsPerSortie : 1;
-      const currentPos = new THREE.Vector3(drone.mesh.position.x, 0, drone.mesh.position.z);
       if (drone.harvestCount < maxHarvests) {
-        const next = this._findNearestUnreserved(currentPos);
+        const next = this._findNearestUnreserved(drone.mesh.position.x, drone.mesh.position.z);
         if (next) {
-          drone.targetPos = next.pos;
+          drone.targetX = next.x;
+          drone.targetZ = next.z;
           drone.targetId = next.id;
           this._claim(next.id);
           drone.state = 'flying';
@@ -640,28 +634,28 @@ export class DroneManager {
         }
       }
 
-      drone.targetPos = null;
       drone.targetId = null;
       drone.state = 'returning';
     }
   }
 
   handleReturning(drone, dt) {
-    const home = new THREE.Vector3(drone.homePos.x, drone.mesh.position.y, drone.homePos.z);
-    const dir = home.clone().sub(drone.mesh.position);
-    const dist = new THREE.Vector2(dir.x, dir.z).length();
+    const dx = drone.homeX - drone.mesh.position.x;
+    const dz = drone.homeZ - drone.mesh.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
 
     if (dist < 0.5) {
-      drone.mesh.position.x = drone.homePos.x;
-      drone.mesh.position.z = drone.homePos.z;
+      drone.mesh.position.x = drone.homeX;
+      drone.mesh.position.z = drone.homeZ;
       drone.cooldown = this.getDroneCooldown(drone);
       drone.state = 'cooling';
     } else {
-      dir.y = 0;
-      dir.normalize().multiplyScalar(this.getDroneSpeed(drone) * dt);
-      drone.mesh.position.x += dir.x;
-      drone.mesh.position.z += dir.z;
-      drone.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+      const step = this.getDroneSpeed(drone) * dt / dist;
+      const mx = dx * step;
+      const mz = dz * step;
+      drone.mesh.position.x += mx;
+      drone.mesh.position.z += mz;
+      drone.mesh.rotation.y = Math.atan2(mx, mz);
     }
   }
 

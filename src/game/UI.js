@@ -25,6 +25,9 @@ export class UI {
 
     this.dockLevelEl = document.getElementById('dock-level');
     this.dockCostEl = document.getElementById('global-dock-cost');
+    this.dockSkillGenItem = document.getElementById('dock-skill-gen-item');
+    this.dockSkillGenLevelEl = document.getElementById('dock-skill-gen-level');
+    this.dockSkillGenCostEl = document.getElementById('dock-skill-gen-cost');
     this.globalSpeedLevelEl = document.getElementById('global-speed-level');
     this.globalSpeedCostEl = document.getElementById('global-speed-cost');
     this.globalHarvestLevelEl = document.getElementById('global-harvest-level');
@@ -40,6 +43,10 @@ export class UI {
     this.multiCostEl = document.getElementById('flower-multi-cost');
     this.megaLevelEl = document.getElementById('mega-level');
     this.megaCostEl = document.getElementById('mega-flower-cost');
+    this.capacityLevelEl = document.getElementById('capacity-level');
+    this.capacityCostEl = document.getElementById('flower-capacity-cost');
+    this.mushroomLevelEl = document.getElementById('mushroom-level');
+    this.mushroomCostEl = document.getElementById('mushroom-cost');
 
     this.badgeSpawn = document.getElementById('badge-spawn');
     this.badgeSpawnVal = document.getElementById('badge-spawn-val');
@@ -56,9 +63,19 @@ export class UI {
     this.badgeMega = document.getElementById('badge-mega');
     this.badgeMegaVal = document.getElementById('badge-mega-val');
     this.badgeMegaTip = document.getElementById('badge-mega-tip');
+    this.badgeMushroom = document.getElementById('badge-mushroom');
+    this.badgeMushroomVal = document.getElementById('badge-mushroom-val');
+    this.badgeMushroomTip = document.getElementById('badge-mushroom-tip');
     this.badgeDrones = document.getElementById('badge-drones');
     this.badgeDronesVal = document.getElementById('badge-drones-val');
     this.badgeDronesTip = document.getElementById('badge-drones-tip');
+
+    this.skillPointsCountEl = document.getElementById('skill-points-count');
+    this.skillBarFillEl = document.getElementById('skill-bar-fill');
+    this.skillBarLabelEl = document.getElementById('skill-bar-label');
+    this.convertBtn = document.getElementById('convert-flowers-btn');
+    this.skillPointsDisplayEl = document.getElementById('skill-points-display');
+    this._lastSkillPoints = 0;
 
     this.dronePopup = document.getElementById('drone-popup');
     this.dronePopupTitle = document.getElementById('drone-popup-title');
@@ -70,6 +87,7 @@ export class UI {
     this.setupTabs();
     this.setupUpgrades();
     this.setupDronePopup();
+    this.setupSkillPoints();
     this.state.onChange(() => this.updateDisplay());
     this.droneManager.onPlacementChange((active) => this.onPlacementChange(active));
     this.fpsTimer = 0;
@@ -122,6 +140,16 @@ export class UI {
       if (this.state.buyGlobalDock()) {
         this.droneManager.applyGlobalDock();
         this.showToast('Drone Dock installed! 1s cooldown for all R1s.');
+      } else {
+        this.showToast('Not enough flowers!');
+      }
+    });
+
+    document.getElementById('buy-dock-skill-gen').addEventListener('click', () => {
+      if (this.state.buyDockSkillGen()) {
+        this.showToast('★ Mega Dock active! Docks now generate skill XP.');
+      } else if (this.state.dockLevel < 1) {
+        this.showToast('Buy Drone Dock first!');
       } else {
         this.showToast('Not enough flowers!');
       }
@@ -189,6 +217,24 @@ export class UI {
         this.showToast('Not enough flowers!');
       }
     });
+
+    document.getElementById('buy-mushroom').addEventListener('click', () => {
+      if (this.state.buyMushroom()) {
+        const chance = Math.round(this.state.getMushroomChance() * 100);
+        this.showToast(`🍄 Mushrooms upgraded! ${chance}% chance`);
+      } else {
+        this.showToast('Not enough flowers!');
+      }
+    });
+
+    document.getElementById('buy-flower-capacity').addEventListener('click', () => {
+      if (this.state.buyCapacity()) {
+        const bonus = this.state.getCapacityBonus();
+        this.showToast(`Grid capacity +${bonus}!`);
+      } else {
+        this.showToast('Not enough flowers!');
+      }
+    });
   }
 
   setupDronePopup() {
@@ -211,6 +257,24 @@ export class UI {
         }
         this.state._notify();
         this.renderDronePopup();
+      }
+    });
+  }
+
+  setupSkillPoints() {
+    this.convertBtn.addEventListener('click', () => {
+      if (this.state.flowers < 1) return;
+      const prevSP = this.state.skillPoints;
+      if (this.state.convertAllFlowersToSkillCurrency()) {
+        const gained = this.state.skillPoints - prevSP;
+        if (gained > 0) {
+          this.showToast(`★ +${gained} Skill Point${gained > 1 ? 's' : ''}!`);
+          this.skillPointsDisplayEl.classList.remove('gained');
+          void this.skillPointsDisplayEl.offsetWidth;
+          this.skillPointsDisplayEl.classList.add('gained');
+        } else {
+          this.showToast('Flowers converted to skill XP!');
+        }
       }
     });
   }
@@ -294,9 +358,9 @@ export class UI {
     }
 
     const worldPos = new THREE.Vector3(
-      drone.homePos.x,
+      drone.homeX,
       1.5,
-      drone.homePos.z
+      drone.homeZ
     );
 
     const screenPos = worldPos.clone().project(this.camera);
@@ -341,6 +405,22 @@ export class UI {
     } else {
       this.dockCostEl.textContent = this.state.prices['r1-dock'] + ' 🌸';
       dockBtn.classList.toggle('cannot-afford', !this.state.canAfford('r1-dock'));
+    }
+
+    // Dock Skill Generator — only visible after dock is owned
+    if (hasDock) {
+      this.dockSkillGenItem.classList.remove('hidden');
+      const genBtn = document.getElementById('buy-dock-skill-gen');
+      if (this.state.dockSkillGen) {
+        const rate = this.state.getDockSkillXpPerSecond();
+        this.dockSkillGenLevelEl.textContent = `Active — ★ ${rate}/s (${this.state.dronesOwned} drones)`;
+        genBtn.textContent = '✓ Active';
+        genBtn.classList.add('cannot-afford');
+      } else {
+        this.dockSkillGenLevelEl.textContent = 'Not installed';
+        this.dockSkillGenCostEl.textContent = this.state.prices['dock-skill-gen'].toLocaleString() + ' 🌸';
+        genBtn.classList.toggle('cannot-afford', !this.state.canAfford('dock-skill-gen'));
+      }
     }
 
     const spdLvl = this.state.droneSpeedLevel;
@@ -429,6 +509,32 @@ export class UI {
     megaBtn.classList.toggle('cannot-afford', !this.state.canAfford('mega-flower') || maxMega);
     if (maxMega) megaBtn.textContent = 'MAX';
 
+    // Mushroom upgrade
+    const shroomChance = Math.round(this.state.getMushroomChance() * 100);
+    const shroomMax = this.state.getMushroomMaxLevel();
+    const maxShroom = this.state.mushroomLevel >= shroomMax;
+    const shroomXp = this.state.getMushroomSkillXp();
+    this.mushroomLevelEl.textContent = maxShroom
+      ? `${this.state.mushroomLevel}/${shroomMax} — MAX (${shroomChance}%, ★${shroomXp})`
+      : `${this.state.mushroomLevel}/${shroomMax} — ${shroomChance}% chance (★${shroomXp} XP)`;
+    this.mushroomCostEl.textContent = this.state.prices['mushroom'].toLocaleString() + ' 🌸';
+    const shroomBtn = document.getElementById('buy-mushroom');
+    shroomBtn.classList.toggle('cannot-afford', !this.state.canAfford('mushroom') || maxShroom);
+    if (maxShroom) shroomBtn.textContent = 'MAX';
+
+    // Capacity upgrade
+    const capMax = this.state.getCapacityMaxLevel();
+    const maxCap = this.state.capacityLevel >= capMax;
+    const capBonus = this.state.getCapacityBonus();
+    const baseMax = this.flowerManager ? this.flowerManager.getCounts().max - capBonus : 70;
+    this.capacityLevelEl.textContent = maxCap
+      ? `${this.state.capacityLevel}/${capMax} — MAX (${baseMax + capBonus})`
+      : `${this.state.capacityLevel}/${capMax} — Max: ${baseMax + capBonus}`;
+    this.capacityCostEl.textContent = this.state.prices['flower-capacity'].toLocaleString() + ' 🌸';
+    const capBtn = document.getElementById('buy-flower-capacity');
+    capBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-capacity') || maxCap);
+    if (maxCap) capBtn.textContent = 'MAX';
+
     // Badges
     if (this.state.spawnSpeedLevel > 0) {
       this.badgeSpawn.classList.remove('hidden');
@@ -458,6 +564,11 @@ export class UI {
       this.badgeMegaVal.textContent = this.state.megaFlowerLevel;
       this.badgeMegaTip.textContent = `Mega Flowers ${this.state.megaFlowerLevel}/${megaMax} — ${chance}% chance`;
     }
+    if (this.state.mushroomLevel > 0) {
+      this.badgeMushroom.classList.remove('hidden');
+      this.badgeMushroomVal.textContent = this.state.mushroomLevel;
+      this.badgeMushroomTip.textContent = `Mushrooms ${this.state.mushroomLevel}/${shroomMax} — ${shroomChance}% chance`;
+    }
     if (this.state.dronesOwned > 0) {
       this.badgeDrones.classList.remove('hidden');
       this.badgeDronesVal.textContent = this.state.dronesOwned;
@@ -471,6 +582,16 @@ export class UI {
         ultBtn.classList.toggle('cannot-afford', !this.state.canAfford('r1-ultimate'));
       }
     }
+
+    // Skill points
+    this.skillPointsCountEl.textContent = this.state.skillPoints;
+    const barMax = this.state.getSkillBarMax();
+    const pct = Math.min(100, (this.state.skillCurrency / barMax) * 100);
+    this.skillBarFillEl.style.width = pct + '%';
+    const cur = Math.floor(this.state.skillCurrency).toLocaleString();
+    const max = barMax.toLocaleString();
+    this.skillBarLabelEl.textContent = cur + ' / ' + max;
+    this.convertBtn.classList.toggle('no-flowers', this.state.flowers < 1);
   }
 
   update(dt) {
@@ -479,6 +600,28 @@ export class UI {
       this.fpsTimer = 0;
       this.state.computeFlowersPerSecond();
       this.fpsEl.textContent = `(${this.state.flowersPerSecond}/s)`;
+    }
+
+    const prevSP = this.state.skillPoints;
+    this.state.tickPassiveSkillXp(dt);
+    if (this.state.skillPoints > prevSP) {
+      const gained = this.state.skillPoints - prevSP;
+      this.showToast(`★ +${gained} Skill Point${gained > 1 ? 's' : ''}!`);
+      this.skillPointsDisplayEl.classList.remove('gained');
+      void this.skillPointsDisplayEl.offsetWidth;
+      this.skillPointsDisplayEl.classList.add('gained');
+      this.updateDisplay();
+    }
+
+    // Update skill bar smoothly for passive gen
+    if (this.state.dockSkillGen) {
+      this.skillPointsCountEl.textContent = this.state.skillPoints;
+      const barMax = this.state.getSkillBarMax();
+      const pct = Math.min(100, (this.state.skillCurrency / barMax) * 100);
+      this.skillBarFillEl.style.width = pct + '%';
+      const cur = Math.floor(this.state.skillCurrency).toLocaleString();
+      const max = barMax.toLocaleString();
+      this.skillBarLabelEl.textContent = cur + ' / ' + max;
     }
 
     const counts = this.flowerManager.getCounts();

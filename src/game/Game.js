@@ -6,6 +6,7 @@ import { DroneManager } from './DroneManager.js';
 import { GameState } from './GameState.js';
 import { UI } from './UI.js';
 import { FloatingTextManager } from './FloatingText.js';
+import { RivalCEO } from './RivalCEO.js';
 
 const PIXEL_RATIO = 3;
 
@@ -25,6 +26,7 @@ export class Game {
     this.flowerManager = new FlowerManager(this.scene, this.state, this.world);
     this.droneManager = new DroneManager(this.scene, this.state, this.flowerManager, this.world, this.floatingText);
     this.ui = new UI(this.state, this.droneManager, this.flowerManager, this.camera, this.renderer);
+    this.rivalCEO = new RivalCEO(this.scene, this.world);
 
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
@@ -150,11 +152,15 @@ export class Game {
 
     const flowerHit = this.flowerManager.checkClick(this.raycaster);
     if (flowerHit) {
-      const baseVal = flowerHit.userData.flowerValue || 1;
-      const val = this.state.getCollectionValue(baseVal);
+      const val = this.state.getCollectionValue(flowerHit.value);
       this.state.addFlowers(val);
-      const p = flowerHit.position;
-      this.floatingText.spawn(p.x, p.y, p.z, '+' + val);
+      if (flowerHit.isMushroom) {
+        const xp = this.state.getMushroomSkillXp();
+        this.state.addSkillXp(xp);
+        this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, '+' + val + ' +★' + xp);
+      } else {
+        this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, '+' + val);
+      }
     }
   }
 
@@ -176,34 +182,58 @@ export class Game {
 
   start() {
     this.clock = new THREE.Clock();
-    const speedParam = new URLSearchParams(window.location.search).get('speed');
+    const speedParam = new URLSearchParams(window.location.search).get('dev_speed');
     this.configuredSpeed = speedParam ? parseFloat(speedParam) : 1;
     if (isNaN(this.configuredSpeed) || this.configuredSpeed <= 0) this.configuredSpeed = 1;
     this.timeMultiplier = this.configuredSpeed;
 
+    const speedToggle = document.getElementById('speed-toggle');
     if (this.configuredSpeed > 1) {
-      const toggle = document.getElementById('speed-toggle');
       const check = document.getElementById('speed-check');
       const label = document.getElementById('speed-label');
-      toggle.classList.remove('hidden');
+      speedToggle.classList.remove('hidden');
       label.textContent = `⏩ ${this.configuredSpeed}x`;
       check.addEventListener('change', () => {
         this.timeMultiplier = check.checked ? this.configuredSpeed : 1;
         label.textContent = check.checked ? `⏩ ${this.configuredSpeed}x` : '▶ 1x';
       });
+    } else {
+      speedToggle.remove();
     }
+
+    this._fpsEl = document.getElementById('fps-counter');
+    this._fpsFrames = 0;
+    this._fpsTime = 0;
 
     this.animate();
   }
 
   animate() {
     requestAnimationFrame(() => this.animate());
-    const dt = this.clock.getDelta() * this.timeMultiplier;
+    const rawDt = this.clock.getDelta();
+    this._frameAccum = (this._frameAccum || 0) + rawDt;
+    const minInterval = 1 / 70;
+    if (this._frameAccum < minInterval) return;
+    const wallDt = this._frameAccum;
+    const dt = wallDt * this.timeMultiplier;
+    this._frameAccum = 0;
 
-    this.flowerManager.update(dt);
-    this.droneManager.update(dt);
+    this._fpsFrames++;
+    this._fpsTime += wallDt;
+    if (this._fpsTime >= 0.5) {
+      this._fpsEl.textContent = Math.round(this._fpsFrames / this._fpsTime) + ' FPS';
+      this._fpsFrames = 0;
+      this._fpsTime = 0;
+    }
+
+    // Rival CEO runs on real time; game systems get slowed during keynote
+    this.rivalCEO.update(dt);
+    const gameDt = dt * this.rivalCEO.slowdownMultiplier;
+
+    this.flowerManager.update(gameDt);
+    this.droneManager.update(gameDt);
     this.floatingText.update(dt);
-    this.ui.update(dt);
+    this.ui.update(gameDt);
 
     this.renderer.render(this.scene, this.camera);
   }

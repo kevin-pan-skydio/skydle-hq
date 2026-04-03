@@ -3,6 +3,7 @@ import CONFIG from '../config.json';
 const R1 = CONFIG.drones.r1;
 const UPG = R1.upgrades;
 const FLOWERS = CONFIG.collectibles.flowers;
+const SP = CONFIG.skillPoints;
 
 export class GameState {
   constructor() {
@@ -16,18 +17,26 @@ export class GameState {
 
     this.dronesOwned = 0;
     this.dockLevel = 0;
+    this.dockSkillGen = false;
     this.droneSpeedLevel = 0;
     this.droneHarvestLevel = 0;
+
+    this.skillPoints = 0;
+    this.skillCurrency = 0;
+    this.totalSkillPointsEarned = 0;
 
     this.spawnSpeedLevel = 0;
     this.spawnBatchLevel = 0;
     this.flowerValueLevel = 0;
     this.flowerMultiplierLevel = 0;
     this.megaFlowerLevel = 0;
+    this.mushroomLevel = 0;
+    this.capacityLevel = 0;
 
     this.prices = {
       'r1-drone': dev ? d : R1.price.earlyPrices[0],
       'r1-dock': dev ? d : R1.upgrades.dock.price.base,
+      'dock-skill-gen': dev ? d : R1.upgrades.dockSkillGen.price.base,
       'drone-speed': dev ? d : R1.upgrades.propeller.price.base,
       'drone-harvest': dev ? d : R1.upgrades.harvester.price.base,
       'r1-ultimate': dev ? d : R1.upgrades.ultimate.price.base,
@@ -36,6 +45,8 @@ export class GameState {
       'flower-value': dev ? d : FLOWERS.valueUpgrade.price.base,
       'flower-multi': dev ? d : FLOWERS.multiplierUpgrade.price.base,
       'mega-flower': dev ? d : (FLOWERS.megaUpgrade.price.levels || [FLOWERS.megaUpgrade.price.base])[0],
+      'mushroom': dev ? d : FLOWERS.mushroomUpgrade.price.levels[0],
+      'flower-capacity': dev ? d : FLOWERS.capacityUpgrade.price.levels[0],
     };
 
     this._priceScales = {
@@ -142,6 +153,38 @@ export class GameState {
     this.dockLevel = 1;
     this._notify();
     return true;
+  }
+
+  buyDockSkillGen() {
+    if (this.dockSkillGen) return false;
+    if (this.dockLevel < 1) return false;
+    const cost = this.prices['dock-skill-gen'];
+    if (!this.spendFlowers(cost)) return false;
+    this.dockSkillGen = true;
+    this._notify();
+    return true;
+  }
+
+  getDockSkillXpPerSecond() {
+    if (!this.dockSkillGen) return 0;
+    return UPG.dockSkillGen.skillXpPerSecond * this.dronesOwned;
+  }
+
+  tickPassiveSkillXp(dt) {
+    const rate = this.getDockSkillXpPerSecond();
+    if (rate <= 0) return;
+    this.skillCurrency += rate * dt;
+
+    let gained = false;
+    const barMax = this.getSkillBarMax();
+    while (this.skillCurrency >= barMax) {
+      this.skillCurrency -= barMax;
+      this.skillPoints++;
+      this.totalSkillPointsEarned++;
+      gained = true;
+    }
+
+    if (gained) this._notify();
   }
 
   buyGlobalSpeed() {
@@ -285,6 +328,69 @@ export class GameState {
     return FLOWERS.megaUpgrade.maxLevel;
   }
 
+  buyMushroom() {
+    const mu = FLOWERS.mushroomUpgrade;
+    if (this.mushroomLevel >= mu.maxLevel) return false;
+    const cost = this.prices['mushroom'];
+    if (!this.spendFlowers(cost)) return false;
+    this.mushroomLevel++;
+    const levels = mu.price.levels;
+    if (this.mushroomLevel < levels.length) {
+      this.prices['mushroom'] = levels[this.mushroomLevel];
+    }
+    this._notify();
+    return true;
+  }
+
+  getMushroomMaxLevel() {
+    return FLOWERS.mushroomUpgrade.maxLevel;
+  }
+
+  getMushroomChance() {
+    return this.mushroomLevel * FLOWERS.mushroomUpgrade.chancePerLevel;
+  }
+
+  getMushroomFlowerValue() {
+    return FLOWERS.mushroomUpgrade.flowerValue;
+  }
+
+  getMushroomSkillXp() {
+    return FLOWERS.mushroomUpgrade.skillXpPerCollect;
+  }
+
+  addSkillXp(amount) {
+    this.skillCurrency += amount;
+    const barMax = this.getSkillBarMax();
+    while (this.skillCurrency >= barMax) {
+      this.skillCurrency -= barMax;
+      this.skillPoints++;
+      this.totalSkillPointsEarned++;
+    }
+    this._notify();
+  }
+
+  buyCapacity() {
+    const cu = FLOWERS.capacityUpgrade;
+    if (this.capacityLevel >= cu.maxLevel) return false;
+    const cost = this.prices['flower-capacity'];
+    if (!this.spendFlowers(cost)) return false;
+    this.capacityLevel++;
+    const levels = cu.price.levels;
+    if (this.capacityLevel < levels.length) {
+      this.prices['flower-capacity'] = levels[this.capacityLevel];
+    }
+    this._notify();
+    return true;
+  }
+
+  getCapacityMaxLevel() {
+    return FLOWERS.capacityUpgrade.maxLevel;
+  }
+
+  getCapacityBonus() {
+    return this.capacityLevel * FLOWERS.capacityUpgrade.bonusPerLevel;
+  }
+
   getSpawnInterval() {
     const su = FLOWERS.spawnUpgrade;
     const range = FLOWERS.baseSpawnInterval - su.minInterval;
@@ -307,5 +413,31 @@ export class GameState {
     );
     const total = this._recentCollections.reduce((s, c) => s + c.amount, 0);
     this.flowersPerSecond = Math.round((total / 5) * 10) / 10;
+  }
+
+  getSkillBarMax() {
+    return SP.barSize + this.totalSkillPointsEarned * SP.barGrowthPerPoint;
+  }
+
+  getSkillCurrencyPerFlower() {
+    return SP.flowersPerSkillCurrency;
+  }
+
+  convertAllFlowersToSkillCurrency() {
+    if (this.flowers < 1) return false;
+    const amount = Math.floor(this.flowers);
+    const currencyGain = amount * this.getSkillCurrencyPerFlower();
+    this.flowers -= amount;
+    this.skillCurrency += currencyGain;
+
+    const barMax = this.getSkillBarMax();
+    while (this.skillCurrency >= barMax) {
+      this.skillCurrency -= barMax;
+      this.skillPoints++;
+      this.totalSkillPointsEarned++;
+    }
+
+    this._notify();
+    return true;
   }
 }

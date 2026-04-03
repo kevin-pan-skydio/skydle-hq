@@ -48,7 +48,8 @@ export class FloatingTextManager {
   }
 
   update(dt) {
-    for (let i = this.texts.length - 1; i >= 0; i--) {
+    let i = this.texts.length;
+    while (i-- > 0) {
       const t = this.texts[i];
       t.age += dt;
       const progress = t.age / LIFETIME;
@@ -56,7 +57,9 @@ export class FloatingTextManager {
       if (progress >= 1) {
         this.scene.remove(t.sprite);
         t.sprite.material.dispose();
-        this.texts.splice(i, 1);
+        const last = this.texts.length - 1;
+        if (i !== last) this.texts[i] = this.texts[last];
+        this.texts.pop();
         continue;
       }
 

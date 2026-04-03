@@ -45,6 +45,18 @@
         "chancePerLevel": 0.1,
         "megaValue": 5,
         "price": { "levels": [120, 800, 5000, 50000, 200000] }
+      },
+      "capacityUpgrade": {
+        "maxLevel": 5,
+        "bonusPerLevel": 18,
+        "price": { "levels": [1000000, 2000000, 3500000, 5500000, 8000000] }
+      },
+      "mushroomUpgrade": {
+        "maxLevel": 5,
+        "chancePerLevel": 0.06,
+        "flowerValue": 3,
+        "skillXpPerCollect": 500,
+        "price": { "levels": [500000, 1000000, 2000000, 4000000, 7000000] }
       }
     }
   },
@@ -60,6 +72,10 @@
         "dock": {
           "cooldown": 1.0,
           "price": { "base": 50000 }
+        },
+        "dockSkillGen": {
+          "skillXpPerSecond": 10,
+          "price": { "base": 500000 }
         },
         "propeller": {
           "speedPerLevel": 1.275,
@@ -80,6 +96,11 @@
         }
       }
     }
+  },
+  "skillPoints": {
+    "flowersPerSkillCurrency": 10,
+    "barSize": 1000000,
+    "barGrowthPerPoint": 500000
   },
   "devMode": {
     "startingFlowers": 999,

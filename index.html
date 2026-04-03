@@ -11,6 +11,8 @@
 <body>
   <canvas id="game-canvas"></canvas>
 
+  <div id="fps-counter">0 FPS</div>
+
   <div id="hud">
     <div id="flower-counter">
       <span id="flower-icon">🌸</span>
@@ -28,6 +30,28 @@
     <button id="cancel-placement">✕ Cancel</button>
   </div>
 
+  <div id="skill-hud">
+    <div id="skill-points-display">
+      <span id="skill-star">★</span>
+      <span id="skill-points-count">0</span>
+      <span id="skill-points-label">Skill Points</span>
+      <span id="skill-info-icon">?</span>
+      <div id="skill-info-box">
+        <strong>★ Skill Points</strong>
+        <p>Convert flowers into skill XP. When the bar fills, you earn a Skill Point.</p>
+        <p>Spend Skill Points in the <em>Skill Tree</em> to unlock new drone types, abilities, and powerful upgrades.
+        </p>
+      </div>
+    </div>
+    <div id="skill-bar-wrap">
+      <div id="skill-bar-fill"></div>
+      <span id="skill-bar-label">0 / 1,000,000</span>
+    </div>
+    <button id="convert-flowers-btn">
+      🌸 → ★ Convert All
+    </button>
+  </div>
+
   <div id="bottom-buttons">
     <div id="buy-r1-btn">
       🔴 Buy R1
@@ -36,11 +60,18 @@
     <div id="shop-toggle">⬆ Upgrades</div>
   </div>
 
+  <div id="rival-countdown" class="hidden">
+    <span id="rival-countdown-icon">🎤</span>
+    <span id="rival-countdown-label">Rival CEO keynote in</span>
+    <span id="rival-countdown-time">5:00</span>
+  </div>
+
   <div id="shop" class="hidden">
     <div id="shop-header">
       <div id="shop-tabs">
         <button class="shop-tab active" data-tab="drones">Drones</button>
         <button class="shop-tab" data-tab="upgrades">Map</button>
+        <button class="shop-tab" data-tab="grid">Grid</button>
       </div>
       <button id="shop-close">✕</button>
     </div>
@@ -78,6 +109,17 @@
           </div>
           <button class="buy-btn" id="buy-global-dock">
             <span class="cost" id="global-dock-cost">1000 🌸</span>
+          </button>
+        </div>
+        <div class="shop-item dock-skill-gen hidden" id="dock-skill-gen-item">
+          <div class="item-icon skill-gen-icon">★</div>
+          <div class="item-info">
+            <div class="item-name skill-gen-name">Mega Dock</div>
+            <div class="item-desc">Docks passively generate skill XP — 10/s per drone</div>
+            <div class="item-owned" id="dock-skill-gen-level">Requires Drone Dock</div>
+          </div>
+          <button class="buy-btn" id="buy-dock-skill-gen">
+            <span class="cost" id="dock-skill-gen-cost">500,000 🌸</span>
           </button>
         </div>
       </div>
@@ -141,6 +183,33 @@
             <span class="cost" id="mega-flower-cost">50 🌸</span>
           </button>
         </div>
+        <div class="shop-item mushroom-item">
+          <div class="item-icon mushroom-icon">🍄</div>
+          <div class="item-info">
+            <div class="item-name mushroom-name">Psychedelic Mushrooms</div>
+            <div class="item-desc">Chance for mushrooms — gives flowers <em>and</em> ★ skill XP</div>
+            <div class="item-owned" id="mushroom-level">0/5 — 0% chance</div>
+          </div>
+          <button class="buy-btn" id="buy-mushroom">
+            <span class="cost" id="mushroom-cost">500,000 🌸</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-grid" class="shop-tab-content hidden">
+      <div id="shop-items">
+        <div class="shop-item">
+          <div class="item-icon">📦</div>
+          <div class="item-info">
+            <div class="item-name">Grid Capacity</div>
+            <div class="item-desc">Increase max flowers on the field (+18 per level)</div>
+            <div class="item-owned" id="capacity-level">0/5 — Max: 70</div>
+          </div>
+          <button class="buy-btn" id="buy-flower-capacity">
+            <span class="cost" id="flower-capacity-cost">1,000,000 🌸</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -175,6 +244,10 @@
       🌺 <span id="badge-mega-val">0</span>
       <div class="badge-tip" id="badge-mega-tip">Mega Flowers Lv.0</div>
     </div>
+    <div class="badge hidden" id="badge-mushroom">
+      🍄 <span id="badge-mushroom-val">0</span>
+      <div class="badge-tip" id="badge-mushroom-tip">Mushrooms Lv.0</div>
+    </div>
     <div class="badge hidden" id="badge-drones">
       🔴 <span id="badge-drones-val">0</span>
       <div class="badge-tip" id="badge-drones-tip">Drones: 0</div>
@@ -183,6 +256,14 @@
 
   <div id="speed-toggle" class="hidden">
     <label><input type="checkbox" id="speed-check" checked /> <span id="speed-label">⏩ 3x</span></label>
+  </div>
+
+  <div id="rival-modal">
+    <div id="rival-modal-icon">🎤</div>
+    <div id="rival-modal-text">
+      <div id="rival-modal-title">A rival CEO is giving a keynote!</div>
+      <div id="rival-modal-sub">All operations slowed by 50%</div>
+    </div>
   </div>
 
   <div id="toast-container"></div>

@@ -94,8 +94,8 @@
         "ultimate": {
           "speedMultiplier": 1.5,
           "harvestsPerSortie": 5,
-          "priceStep": 10000,
-          "price": { "base": 50000 }
+          "priceStep": 8000,
+          "price": { "base": 24000 }
         }
       }
     },

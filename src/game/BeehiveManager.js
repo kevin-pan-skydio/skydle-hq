@@ -92,17 +92,21 @@ export class BeehiveManager {
     return disc;
   }
 
-  _pickRandomTile() {
-    const tiles = this.world.tiles.filter(t => t.type === 'unoccupied');
-    if (tiles.length === 0) return null;
-    return tiles[Math.floor(Math.random() * tiles.length)];
+  _pickRandomPos() {
+    const gs = this.world.gridSize;
+    const step = 2 + 0.15;
+    const half = ((gs - 1) * step) / 2;
+    const margin = EFFECT_RADIUS + 0.5;
+    return {
+      x: (Math.random() - 0.5) * Math.max(0, (half - margin) * 2),
+      z: (Math.random() - 0.5) * Math.max(0, (half - margin) * 2),
+    };
   }
 
   _spawn() {
-    const tile = this._pickRandomTile();
-    if (!tile) return;
-    this.hiveX = tile.x;
-    this.hiveZ = tile.z;
+    const pos = this._pickRandomPos();
+    this.hiveX = pos.x;
+    this.hiveZ = pos.z;
     this.active = true;
     this.activeTimer = ACTIVE_DURATION;
 

@@ -811,12 +811,19 @@ export class UI {
     }
 
     // Spawn speed upgrade
+    const FLCFG = CONFIG.collectibles.flowers;
     const interval = this.state.getSpawnInterval();
     const spawnMax = this.state.getSpawnSpeedMaxLevel();
     const maxSpawn = this.state.spawnSpeedLevel >= spawnMax;
-    this.spawnLevelEl.textContent = maxSpawn
-      ? `${this.state.spawnSpeedLevel}/${spawnMax} — MAX`
-      : `${this.state.spawnSpeedLevel}/${spawnMax} — ${interval.toFixed(1)}s interval`;
+    if (maxSpawn) {
+      this.spawnLevelEl.textContent = `${this.state.spawnSpeedLevel}/${spawnMax} — MAX`;
+    } else {
+      const suCfg = FLCFG.spawnUpgrade;
+      const spawnRange = FLCFG.baseSpawnInterval - suCfg.minInterval;
+      const tNext = Math.min((this.state.spawnSpeedLevel + 1) / suCfg.maxLevel, 1);
+      const intervalNext = (FLCFG.baseSpawnInterval - spawnRange * tNext).toFixed(1);
+      this.spawnLevelEl.textContent = `${this.state.spawnSpeedLevel}/${spawnMax} — ${interval.toFixed(1)}s → ${intervalNext}s interval`;
+    }
     this.spawnCostEl.textContent = this.state.prices['spawn-speed'].toLocaleString() + ' 🌸';
     const spawnBtn = document.getElementById('buy-spawn-speed');
     spawnBtn.classList.toggle('cannot-afford', !this.state.canAfford('spawn-speed') || maxSpawn);
@@ -830,10 +837,19 @@ export class UI {
     const bu = CONFIG.collectibles.flowers.batchUpgrade;
     if (maxBatch) {
       this.batchLevelEl.textContent = `${batchLvl}/${batchMax} — MAX`;
-    } else if (batchLvl < bu.guaranteed.length) {
-      this.batchLevelEl.textContent = `${batchLvl}/${batchMax} — ${bu.guaranteed[batchLvl]} per cycle`;
     } else {
-      this.batchLevelEl.textContent = `${batchLvl}/${batchMax} — avg ~${batchExpected} per cycle`;
+      const nextBLvl = batchLvl + 1;
+      const batchNow = batchLvl < bu.guaranteed.length ? `${bu.guaranteed[batchLvl]}` : `~${batchExpected}`;
+      let batchNextStr;
+      if (nextBLvl < bu.guaranteed.length) {
+        batchNextStr = `${bu.guaranteed[nextBLvl]}`;
+      } else {
+        const bBase = bu.postGuaranteedMin;
+        const extraSlots = bu.maxCount - bBase;
+        const p = ((nextBLvl - bu.guaranteed.length + 1) / (bu.maxLevel - bu.guaranteed.length + 1)) * bu.maxRollProb;
+        batchNextStr = `~${Math.round((bBase + extraSlots * p) * 10) / 10}`;
+      }
+      this.batchLevelEl.textContent = `${batchLvl}/${batchMax} — ${batchNow} → ${batchNextStr} per cycle`;
     }
     this.batchCostEl.textContent = this.state.prices['spawn-batch'].toLocaleString() + ' 🌸';
     const batchBtn = document.getElementById('buy-spawn-batch');
@@ -844,9 +860,16 @@ export class UI {
     const flowerVal = this.state.getFlowerBaseValue();
     const valueMax = this.state.getFlowerValueMaxLevel();
     const maxValue = this.state.flowerValueLevel >= valueMax;
-    this.valueLevelEl.textContent = maxValue
-      ? `${this.state.flowerValueLevel}/${valueMax} — MAX`
-      : `${this.state.flowerValueLevel}/${valueMax} — ${flowerVal} per flower`;
+    if (maxValue) {
+      this.valueLevelEl.textContent = `${this.state.flowerValueLevel}/${valueMax} — MAX`;
+    } else {
+      const vu = FLCFG.valueUpgrade;
+      const fvBase = this.state.hasPerk('bloomBoost') ? 5 : vu.baseValue;
+      const nextFvLvl = this.state.flowerValueLevel + 1;
+      const tFv = nextFvLvl / vu.maxLevel;
+      const flowerValNext = Math.max(fvBase + nextFvLvl, Math.round(fvBase + (vu.maxValue - fvBase) * Math.pow(tFv, vu.curve || 1)));
+      this.valueLevelEl.textContent = `${this.state.flowerValueLevel}/${valueMax} — ${flowerVal} → ${flowerValNext} per flower`;
+    }
     this.valueCostEl.textContent = this.state.prices['flower-value'].toLocaleString() + ' 🌸';
     const valueBtn = document.getElementById('buy-flower-value');
     valueBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-value') || maxValue);
@@ -856,9 +879,14 @@ export class UI {
     const flowerMul = this.state.getFlowerMultiplier();
     const multiMax = this.state.getFlowerMultiplierMaxLevel();
     const maxMulti = this.state.flowerMultiplierLevel >= multiMax;
-    this.multiLevelEl.textContent = maxMulti
-      ? `${this.state.flowerMultiplierLevel}/${multiMax} — MAX`
-      : `${this.state.flowerMultiplierLevel}/${multiMax} — ${flowerMul}x`;
+    if (maxMulti) {
+      this.multiLevelEl.textContent = `${this.state.flowerMultiplierLevel}/${multiMax} — MAX`;
+    } else {
+      const muCfg = FLCFG.multiplierUpgrade;
+      const tMuNext = (this.state.flowerMultiplierLevel + 1) / muCfg.maxLevel;
+      const flowerMulNext = Math.round((muCfg.baseMultiplier + (muCfg.maxMultiplier - muCfg.baseMultiplier) * tMuNext) * 10) / 10;
+      this.multiLevelEl.textContent = `${this.state.flowerMultiplierLevel}/${multiMax} — ${flowerMul}x → ${flowerMulNext}x`;
+    }
     this.multiCostEl.textContent = this.state.prices['flower-multi'].toLocaleString() + ' 🌸';
     const multiBtn = document.getElementById('buy-flower-multi');
     multiBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-multi') || maxMulti);
@@ -869,9 +897,13 @@ export class UI {
     const megaMax = this.state.getMegaMaxLevel();
     const maxMega = this.state.megaFlowerLevel >= megaMax;
     const megaVal = this.state.getMegaFlowerValue();
-    this.megaLevelEl.textContent = maxMega
-      ? `${this.state.megaFlowerLevel}/${megaMax} — MAX (${chance}%, ${megaVal}x)`
-      : `${this.state.megaFlowerLevel}/${megaMax} — ${chance}% chance (${megaVal}x value)`;
+    if (maxMega) {
+      this.megaLevelEl.textContent = `${this.state.megaFlowerLevel}/${megaMax} — MAX (${chance}%, ${megaVal}x)`;
+    } else {
+      const megaPerkBonus = this.state.hasPerk('megaChance') ? 0.2 : 0;
+      const chanceNext = Math.round(((this.state.megaFlowerLevel + 1) * FLCFG.megaUpgrade.chancePerLevel + megaPerkBonus) * 100);
+      this.megaLevelEl.textContent = `${this.state.megaFlowerLevel}/${megaMax} — ${chance}% → ${chanceNext}% chance (${megaVal}x value)`;
+    }
     this.megaCostEl.textContent = this.state.prices['mega-flower'].toLocaleString() + ' 🌸';
     const megaBtn = document.getElementById('buy-mega-flower');
     megaBtn.classList.toggle('cannot-afford', !this.state.canAfford('mega-flower') || maxMega);
@@ -882,9 +914,12 @@ export class UI {
     const shroomMax = this.state.getMushroomMaxLevel();
     const maxShroom = this.state.mushroomLevel >= shroomMax;
     const shroomXp = this.state.getMushroomSkillXp();
-    this.mushroomLevelEl.textContent = maxShroom
-      ? `${this.state.mushroomLevel}/${shroomMax} — MAX (${shroomChance}%, ★${shroomXp})`
-      : `${this.state.mushroomLevel}/${shroomMax} — ${shroomChance}% chance (★${shroomXp} XP)`;
+    if (maxShroom) {
+      this.mushroomLevelEl.textContent = `${this.state.mushroomLevel}/${shroomMax} — MAX (${shroomChance}%, ★${shroomXp})`;
+    } else {
+      const shroomChanceNext = Math.round((this.state.mushroomLevel + 1) * FLCFG.mushroomUpgrade.chancePerLevel * 100);
+      this.mushroomLevelEl.textContent = `${this.state.mushroomLevel}/${shroomMax} — ${shroomChance}% → ${shroomChanceNext}% chance (★${shroomXp} XP)`;
+    }
     this.mushroomCostEl.textContent = this.state.prices['mushroom'].toLocaleString() + ' 🌸';
     const shroomBtn = document.getElementById('buy-mushroom');
     shroomBtn.classList.toggle('cannot-afford', !this.state.canAfford('mushroom') || maxShroom);
@@ -895,9 +930,12 @@ export class UI {
     const maxCap = this.state.capacityLevel >= capMax;
     const capBonus = this.state.getCapacityBonus();
     const baseMax = this.flowerManager ? this.flowerManager.getCounts().max - capBonus : 70;
-    this.capacityLevelEl.textContent = maxCap
-      ? `${this.state.capacityLevel}/${capMax} — MAX (${baseMax + capBonus})`
-      : `${this.state.capacityLevel}/${capMax} — Max: ${baseMax + capBonus}`;
+    if (maxCap) {
+      this.capacityLevelEl.textContent = `${this.state.capacityLevel}/${capMax} — MAX (${baseMax + capBonus})`;
+    } else {
+      const capBonusNext = (this.state.capacityLevel + 1) * FLCFG.capacityUpgrade.bonusPerLevel;
+      this.capacityLevelEl.textContent = `${this.state.capacityLevel}/${capMax} — Max: ${baseMax + capBonus} → ${baseMax + capBonusNext}`;
+    }
     this.capacityCostEl.textContent = this.state.prices['flower-capacity'].toLocaleString() + ' 🌸';
     const capBtn = document.getElementById('buy-flower-capacity');
     capBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-capacity') || maxCap);

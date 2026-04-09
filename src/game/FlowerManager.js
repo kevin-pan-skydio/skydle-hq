@@ -175,9 +175,8 @@ export class FlowerManager {
     }
     this._addVariant(MEGA_COLOR, true);
 
-    // Mushroom variant — shiny phong material
     const shroomGeo = buildMushroomTemplate();
-    const shroomMat = new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 80, specular: 0x886688 });
+    const shroomMat = new THREE.MeshLambertMaterial({ vertexColors: true });
     const shroomMesh = new THREE.InstancedMesh(shroomGeo, shroomMat, MAX_INSTANCES);
     shroomMesh.count = 0;
     shroomMesh.castShadow = false;
@@ -204,25 +203,16 @@ export class FlowerManager {
     this._megaHaloMesh.frustumCulled = false;
     this.scene.add(this._megaHaloMesh);
 
-    // Mushroom holo — inner purple ring
-    this._shroomGlowGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.05, 10);
+    // Mushroom glow — static purple-to-blue disc
+    this._shroomGlowGeo = new THREE.CircleGeometry(0.7, 12);
+    this._shroomGlowGeo.rotateX(-Math.PI / 2);
     this._shroomGlowMat = new THREE.MeshBasicMaterial({
-      color: 0xb040e0, transparent: true, opacity: 0.28,
+      color: 0x9955dd, transparent: true, opacity: 0.25, depthWrite: false,
     });
     this._shroomGlowMesh = new THREE.InstancedMesh(this._shroomGlowGeo, this._shroomGlowMat, MAX_INSTANCES);
     this._shroomGlowMesh.count = 0;
     this._shroomGlowMesh.frustumCulled = false;
     this.scene.add(this._shroomGlowMesh);
-
-    // Mushroom holo — outer Skydio blue ring
-    this._shroomHaloGeo = new THREE.CylinderGeometry(0.9, 0.9, 0.04, 10);
-    this._shroomHaloMat = new THREE.MeshBasicMaterial({
-      color: 0x1a9dff, transparent: true, opacity: 0.18,
-    });
-    this._shroomHaloMesh = new THREE.InstancedMesh(this._shroomHaloGeo, this._shroomHaloMat, MAX_INSTANCES);
-    this._shroomHaloMesh.count = 0;
-    this._shroomHaloMesh.frustumCulled = false;
-    this.scene.add(this._shroomHaloMesh);
 
     const shadowGeo = new THREE.CircleGeometry(0.35, 8);
     shadowGeo.rotateX(-Math.PI / 2);
@@ -340,10 +330,11 @@ export class FlowerManager {
     let megaGlowCount = 0;
     let megaHaloCount = 0;
     let shroomGlowCount = 0;
-    let shroomHaloCount = 0;
     let shadowCount = 0;
 
     const now = performance.now();
+    const megaGlowPulse = 1.0;
+    const megaHaloPulse = 1.0;
 
     for (const f of this.flowers) {
       const key = this._variantKey(f);
@@ -380,33 +371,23 @@ export class FlowerManager {
       this._shadowMesh.setMatrixAt(shadowCount++, this._dummy.matrix);
 
       if (f.isMega) {
-        const glowPulse = 0.9 + Math.sin(now * 0.005 + f.id * 3.1) * 0.15;
         this._dummy.position.set(f.x, 0.02, f.z);
-        this._dummy.scale.setScalar(scale * glowPulse);
+        this._dummy.scale.setScalar(scale * megaGlowPulse);
         this._dummy.rotation.set(0, 0, 0);
         this._dummy.updateMatrix();
         this._megaGlowMesh.setMatrixAt(megaGlowCount++, this._dummy.matrix);
 
-        const haloPulse = 0.85 + Math.sin(now * 0.003 + f.id * 2.0 + 1.5) * 0.2;
-        this._dummy.scale.setScalar(scale * haloPulse);
+        this._dummy.scale.setScalar(scale * megaHaloPulse);
         this._dummy.updateMatrix();
         this._megaHaloMesh.setMatrixAt(megaHaloCount++, this._dummy.matrix);
       }
 
       if (f.isMushroom) {
-        // Inner purple ring
-        const glowPulse = 0.9 + Math.sin(now * 0.005 + f.id * 2.3) * 0.15;
-        this._dummy.position.set(f.x, 0.02, f.z);
-        this._dummy.scale.setScalar(scale * glowPulse);
+        this._dummy.position.set(f.x, 0.01, f.z);
+        this._dummy.scale.setScalar(scale);
         this._dummy.rotation.set(0, 0, 0);
         this._dummy.updateMatrix();
         this._shroomGlowMesh.setMatrixAt(shroomGlowCount++, this._dummy.matrix);
-
-        // Outer Skydio blue ring — counter-pulse
-        const haloPulse = 0.85 + Math.sin(now * 0.003 + f.id * 1.8 + 1.5) * 0.2;
-        this._dummy.scale.setScalar(scale * haloPulse);
-        this._dummy.updateMatrix();
-        this._shroomHaloMesh.setMatrixAt(shroomHaloCount++, this._dummy.matrix);
       }
     }
 
@@ -423,8 +404,6 @@ export class FlowerManager {
     if (megaHaloCount > 0) this._megaHaloMesh.instanceMatrix.needsUpdate = true;
     this._shroomGlowMesh.count = shroomGlowCount;
     if (shroomGlowCount > 0) this._shroomGlowMesh.instanceMatrix.needsUpdate = true;
-    this._shroomHaloMesh.count = shroomHaloCount;
-    if (shroomHaloCount > 0) this._shroomHaloMesh.instanceMatrix.needsUpdate = true;
   }
 
   update(dt) {

@@ -380,8 +380,8 @@ function createProgressBarSprite() {
   return sprite;
 }
 
-function updateProgressBar(sprite, progress) {
-  const quantized = Math.round(progress * 20);
+function updateProgressBar(sprite, progress, steps) {
+  const quantized = Math.round(progress * steps);
   if (sprite.userData.lastQ === quantized) return;
   sprite.userData.lastQ = quantized;
 
@@ -657,7 +657,7 @@ export class DroneManager {
     for (const drone of this.drones) {
       const isGrounded = drone.state === 'idle' || drone.state === 'cooling';
 
-      if (!isGrounded) {
+      if (!isGrounded && this.drones.length <= 12) {
         for (const blade of drone.props) {
           blade.userData.propAngle += dt * 25;
           blade.rotation.y = blade.userData.propAngle;
@@ -701,7 +701,8 @@ export class DroneManager {
       if (drone.state === 'harvesting') {
         drone.harvestBar.visible = true;
         const progress = drone.harvestTimer / this.getDroneHarvestTime(drone);
-        updateProgressBar(drone.harvestBar, progress);
+        const barSteps = this.drones.length > 12 ? 8 : 20;
+        updateProgressBar(drone.harvestBar, progress, barSteps);
       } else {
         drone.harvestBar.visible = false;
       }

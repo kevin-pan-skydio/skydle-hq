@@ -2,6 +2,8 @@
 
 Isometric pixel art idle game set in Skydio's global HQ, built with Three.js. Collect flowers, buy drones, upgrade attachments, and automate your way to a flower empire.
 
+Now with a skill tree.
+
 ## Development
 
 ```bash

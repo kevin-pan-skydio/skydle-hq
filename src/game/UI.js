@@ -670,6 +670,14 @@ export class UI {
     if (active) this.closeDronePopup();
   }
 
+  _setBtnState(btn, costId, isMaxed, label) {
+    if (isMaxed) {
+      btn.textContent = label || 'MAX';
+    } else if (!btn.querySelector('.cost')) {
+      btn.innerHTML = `<span class="cost" id="${costId}"></span>`;
+    }
+  }
+
   updateDisplay() {
     this.flowerCountEl.textContent = Math.floor(this.state.flowers);
 
@@ -689,29 +697,32 @@ export class UI {
     const hasDock = this.state.dockLevel >= 1;
     this.dockLevelEl.textContent = hasDock ? `Installed — ${UPG.dock.cooldown}s cooldown` : 'Not installed';
     const dockBtn = document.getElementById('buy-global-dock');
+    this._setBtnState(dockBtn, 'global-dock-cost', hasDock, '✓ Owned');
     if (hasDock) {
-      dockBtn.textContent = '✓ Owned';
       dockBtn.classList.add('cannot-afford');
     } else {
-      this.dockCostEl.textContent = this.state.prices['r1-dock'].toLocaleString() + ' 🌸';
+      const costEl = dockBtn.querySelector('.cost');
+      if (costEl) costEl.textContent = this.state.prices['r1-dock'].toLocaleString() + ' 🌸';
       dockBtn.classList.toggle('cannot-afford', !this.state.canAfford('r1-dock'));
     }
 
     // Dock Skill Generator — always visible, greyed out if dock not owned
     this.dockSkillGenItem.classList.remove('hidden');
     const genBtn = document.getElementById('buy-dock-skill-gen');
+    this._setBtnState(genBtn, 'dock-skill-gen-cost', this.state.dockSkillGen, '✓ Active');
     if (this.state.dockSkillGen) {
       const rate = this.state.getDockSkillXpPerSecond();
       this.dockSkillGenLevelEl.textContent = `Active — ★ ${rate}/s (${this.state.dronesOwned} drones)`;
-      genBtn.textContent = '✓ Active';
       genBtn.classList.add('cannot-afford');
     } else if (!hasDock) {
       this.dockSkillGenLevelEl.textContent = 'Requires Drone Dock';
-      this.dockSkillGenCostEl.textContent = this.state.prices['dock-skill-gen'].toLocaleString() + ' 🌸';
+      const costEl = genBtn.querySelector('.cost');
+      if (costEl) costEl.textContent = this.state.prices['dock-skill-gen'].toLocaleString() + ' 🌸';
       genBtn.classList.add('cannot-afford');
     } else {
       this.dockSkillGenLevelEl.textContent = 'Not installed';
-      this.dockSkillGenCostEl.textContent = this.state.prices['dock-skill-gen'].toLocaleString() + ' 🌸';
+      const costEl = genBtn.querySelector('.cost');
+      if (costEl) costEl.textContent = this.state.prices['dock-skill-gen'].toLocaleString() + ' 🌸';
       genBtn.classList.toggle('cannot-afford', !this.state.canAfford('dock-skill-gen'));
     }
 
@@ -728,10 +739,10 @@ export class UI {
     } else {
       this.globalSpeedLevelEl.textContent = `${spdLvl}/${UPG.propeller.maxLevel} (${spdTier}) — ${spdNow} → ${spdNext} speed (+${spdPct}%)`;
     }
-    this.globalSpeedCostEl.textContent = this.state.prices['drone-speed'].toLocaleString() + ' 🌸';
     const spdBtn = document.getElementById('buy-global-speed');
+    this._setBtnState(spdBtn, 'global-speed-cost', maxSpd);
     spdBtn.classList.toggle('cannot-afford', !this.state.canAfford('drone-speed') || maxSpd);
-    if (maxSpd) spdBtn.textContent = 'MAX';
+    if (!maxSpd) { const c = spdBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['drone-speed'].toLocaleString() + ' 🌸'; }
 
     const hvLvl = this.state.droneHarvestLevel;
     const hvMax = UPG.harvester.maxLevel;
@@ -747,10 +758,10 @@ export class UI {
     } else {
       this.globalHarvestLevelEl.textContent = `${hvLvl}/${hvMax} (${hvTier}) — ${hvNow}s → ${hvNext}s harvest (-${hvPct}%)`;
     }
-    this.globalHarvestCostEl.textContent = this.state.prices['drone-harvest'].toLocaleString() + ' 🌸';
     const hvBtn = document.getElementById('buy-global-harvest');
+    this._setBtnState(hvBtn, 'global-harvest-cost', maxHv);
     hvBtn.classList.toggle('cannot-afford', !this.state.canAfford('drone-harvest') || maxHv);
-    if (maxHv) hvBtn.textContent = 'MAX';
+    if (!maxHv) { const c = hvBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['drone-harvest'].toLocaleString() + ' 🌸'; }
 
     // S2 upgrades — visible only with s2Drone perk
     const hasS2Perk = this.state.hasPerk('s2Drone');
@@ -777,11 +788,10 @@ export class UI {
       } else {
         s2SpeedLevelEl.textContent = `${s2sLvl}/${S2UPG.propeller.maxLevel} (${s2sTier}) — ${s2sNow} → ${s2sNext} speed (+${s2sPct}%)`;
       }
-      const s2SpeedCostEl = document.getElementById('s2-speed-cost');
-      s2SpeedCostEl.textContent = this.state.prices['s2-speed'].toLocaleString() + ' 🌸';
       const s2SpdBtn = document.getElementById('buy-s2-speed');
+      this._setBtnState(s2SpdBtn, 's2-speed-cost', s2sMax);
       s2SpdBtn.classList.toggle('cannot-afford', !this.state.canAfford('s2-speed') || s2sMax);
-      if (s2sMax) s2SpdBtn.textContent = 'MAX';
+      if (!s2sMax) { const c = s2SpdBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['s2-speed'].toLocaleString() + ' 🌸'; }
 
       const s2hLvl = this.state.s2HarvestLevel;
       const s2hMaxLvl = S2UPG.harvester.maxLevel;
@@ -799,11 +809,10 @@ export class UI {
       } else {
         s2HarvestLevelEl.textContent = `${s2hLvl}/${s2hMaxLvl} (${s2hTier}) — ${s2hNow}s → ${s2hNext}s harvest (-${s2hPct}%)`;
       }
-      const s2HarvestCostEl = document.getElementById('s2-harvest-cost');
-      s2HarvestCostEl.textContent = this.state.prices['s2-harvest'].toLocaleString() + ' 🌸';
       const s2HvBtn = document.getElementById('buy-s2-harvest');
+      this._setBtnState(s2HvBtn, 's2-harvest-cost', maxS2h);
       s2HvBtn.classList.toggle('cannot-afford', !this.state.canAfford('s2-harvest') || maxS2h);
-      if (maxS2h) s2HvBtn.textContent = 'MAX';
+      if (!maxS2h) { const c = s2HvBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['s2-harvest'].toLocaleString() + ' 🌸'; }
     } else {
       s2Divider.classList.add('hidden');
       s2SpeedItem.classList.add('hidden');
@@ -824,10 +833,10 @@ export class UI {
       const intervalNext = (FLCFG.baseSpawnInterval - spawnRange * tNext).toFixed(1);
       this.spawnLevelEl.textContent = `${this.state.spawnSpeedLevel}/${spawnMax} — ${interval.toFixed(1)}s → ${intervalNext}s interval`;
     }
-    this.spawnCostEl.textContent = this.state.prices['spawn-speed'].toLocaleString() + ' 🌸';
     const spawnBtn = document.getElementById('buy-spawn-speed');
+    this._setBtnState(spawnBtn, 'spawn-speed-cost', maxSpawn);
     spawnBtn.classList.toggle('cannot-afford', !this.state.canAfford('spawn-speed') || maxSpawn);
-    if (maxSpawn) spawnBtn.textContent = 'MAX';
+    if (!maxSpawn) { const c = spawnBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['spawn-speed'].toLocaleString() + ' 🌸'; }
 
     // Batch spawn upgrade
     const batchExpected = this.state.getSpawnBatchExpected();
@@ -851,10 +860,10 @@ export class UI {
       }
       this.batchLevelEl.textContent = `${batchLvl}/${batchMax} — ${batchNow} → ${batchNextStr} per cycle`;
     }
-    this.batchCostEl.textContent = this.state.prices['spawn-batch'].toLocaleString() + ' 🌸';
     const batchBtn = document.getElementById('buy-spawn-batch');
+    this._setBtnState(batchBtn, 'spawn-batch-cost', maxBatch);
     batchBtn.classList.toggle('cannot-afford', !this.state.canAfford('spawn-batch') || maxBatch);
-    if (maxBatch) batchBtn.textContent = 'MAX';
+    if (!maxBatch) { const c = batchBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['spawn-batch'].toLocaleString() + ' 🌸'; }
 
     // Flower value upgrade
     const flowerVal = this.state.getFlowerBaseValue();
@@ -870,10 +879,10 @@ export class UI {
       const flowerValNext = Math.max(fvBase + nextFvLvl, Math.round(fvBase + (vu.maxValue - fvBase) * Math.pow(tFv, vu.curve || 1)));
       this.valueLevelEl.textContent = `${this.state.flowerValueLevel}/${valueMax} — ${flowerVal} → ${flowerValNext} per flower`;
     }
-    this.valueCostEl.textContent = this.state.prices['flower-value'].toLocaleString() + ' 🌸';
     const valueBtn = document.getElementById('buy-flower-value');
+    this._setBtnState(valueBtn, 'flower-value-cost', maxValue);
     valueBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-value') || maxValue);
-    if (maxValue) valueBtn.textContent = 'MAX';
+    if (!maxValue) { const c = valueBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['flower-value'].toLocaleString() + ' 🌸'; }
 
     // Multiplier upgrade
     const flowerMul = this.state.getFlowerMultiplier();
@@ -887,10 +896,10 @@ export class UI {
       const flowerMulNext = Math.round((muCfg.baseMultiplier + (muCfg.maxMultiplier - muCfg.baseMultiplier) * tMuNext) * 10) / 10;
       this.multiLevelEl.textContent = `${this.state.flowerMultiplierLevel}/${multiMax} — ${flowerMul}x → ${flowerMulNext}x`;
     }
-    this.multiCostEl.textContent = this.state.prices['flower-multi'].toLocaleString() + ' 🌸';
     const multiBtn = document.getElementById('buy-flower-multi');
+    this._setBtnState(multiBtn, 'flower-multi-cost', maxMulti);
     multiBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-multi') || maxMulti);
-    if (maxMulti) multiBtn.textContent = 'MAX';
+    if (!maxMulti) { const c = multiBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['flower-multi'].toLocaleString() + ' 🌸'; }
 
     // Mega flower upgrade
     const chance = Math.round(this.state.getMegaFlowerChance() * 100);
@@ -904,10 +913,10 @@ export class UI {
       const chanceNext = Math.round(((this.state.megaFlowerLevel + 1) * FLCFG.megaUpgrade.chancePerLevel + megaPerkBonus) * 100);
       this.megaLevelEl.textContent = `${this.state.megaFlowerLevel}/${megaMax} — ${chance}% → ${chanceNext}% chance (${megaVal}x value)`;
     }
-    this.megaCostEl.textContent = this.state.prices['mega-flower'].toLocaleString() + ' 🌸';
     const megaBtn = document.getElementById('buy-mega-flower');
+    this._setBtnState(megaBtn, 'mega-flower-cost', maxMega);
     megaBtn.classList.toggle('cannot-afford', !this.state.canAfford('mega-flower') || maxMega);
-    if (maxMega) megaBtn.textContent = 'MAX';
+    if (!maxMega) { const c = megaBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['mega-flower'].toLocaleString() + ' 🌸'; }
 
     // Mushroom upgrade
     const shroomChance = Math.round(this.state.getMushroomChance() * 100);
@@ -920,10 +929,10 @@ export class UI {
       const shroomChanceNext = Math.round((this.state.mushroomLevel + 1) * FLCFG.mushroomUpgrade.chancePerLevel * 100);
       this.mushroomLevelEl.textContent = `${this.state.mushroomLevel}/${shroomMax} — ${shroomChance}% → ${shroomChanceNext}% chance (★${shroomXp} XP)`;
     }
-    this.mushroomCostEl.textContent = this.state.prices['mushroom'].toLocaleString() + ' 🌸';
     const shroomBtn = document.getElementById('buy-mushroom');
+    this._setBtnState(shroomBtn, 'mushroom-cost', maxShroom);
     shroomBtn.classList.toggle('cannot-afford', !this.state.canAfford('mushroom') || maxShroom);
-    if (maxShroom) shroomBtn.textContent = 'MAX';
+    if (!maxShroom) { const c = shroomBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['mushroom'].toLocaleString() + ' 🌸'; }
 
     // Capacity upgrade
     const capMax = this.state.getCapacityMaxLevel();
@@ -936,10 +945,10 @@ export class UI {
       const capBonusNext = (this.state.capacityLevel + 1) * FLCFG.capacityUpgrade.bonusPerLevel;
       this.capacityLevelEl.textContent = `${this.state.capacityLevel}/${capMax} — Max: ${baseMax + capBonus} → ${baseMax + capBonusNext}`;
     }
-    this.capacityCostEl.textContent = this.state.prices['flower-capacity'].toLocaleString() + ' 🌸';
     const capBtn = document.getElementById('buy-flower-capacity');
+    this._setBtnState(capBtn, 'flower-capacity-cost', maxCap);
     capBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-capacity') || maxCap);
-    if (maxCap) capBtn.textContent = 'MAX';
+    if (!maxCap) { const c = capBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['flower-capacity'].toLocaleString() + ' 🌸'; }
 
     // Badges
     if (this.state.spawnSpeedLevel > 0) {

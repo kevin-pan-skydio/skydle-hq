@@ -19,6 +19,7 @@ export class GameState {
     this.flowersPerSecond = 0;
 
     this.dronesOwned = 0;
+    this.dronesBought = 0;
     this.s2DronesOwned = 0;
     this.dockLevel = 0;
     this.dockSkillGen = false;
@@ -130,14 +131,22 @@ export class GameState {
   _scaleDronePrice() {
     if (this.devMode) return;
     const cfg = R1.price;
-    const n = this.dronesOwned;
+    const n = this.dronesBought;
     if (n < cfg.earlyPrices.length) {
       this.prices['r1-drone'] = cfg.earlyPrices[n];
     } else if (n < cfg.linearAfter) {
-      this.prices['r1-drone'] = Math.floor(this.prices['r1-drone'] * cfg.scale);
+      let price = cfg.earlyPrices[cfg.earlyPrices.length - 1];
+      for (let i = cfg.earlyPrices.length; i <= n; i++) {
+        price = Math.floor(price * cfg.scale);
+      }
+      this.prices['r1-drone'] = price;
     } else {
+      let price = cfg.earlyPrices[cfg.earlyPrices.length - 1];
+      for (let i = cfg.earlyPrices.length; i < cfg.linearAfter; i++) {
+        price = Math.floor(price * cfg.scale);
+      }
       const k = n - cfg.linearAfter + 1;
-      this.prices['r1-drone'] = this.prices['r1-drone'] + cfg.linearStep * k;
+      this.prices['r1-drone'] = price + cfg.linearStep * k;
     }
   }
 
@@ -156,6 +165,7 @@ export class GameState {
     if (!this.spendFlowers(cost)) return false;
     this.lastDroneCost = cost;
     this.dronesOwned++;
+    this.dronesBought++;
     this._scaleDronePrice();
     this._notify();
     return true;
@@ -549,6 +559,7 @@ export class GameState {
     this.flowersPerSecond = 0;
 
     this.dronesOwned = 0;
+    this.dronesBought = 0;
     this.s2DronesOwned = 0;
     this.dockLevel = 0;
     this.dockSkillGen = false;
@@ -588,15 +599,34 @@ export class GameState {
 
   exportSave() {
     const data = {
+      v: 2,
+      fl: this.flowers,
+      tfc: this.totalFlowersCollected,
+      dr: this.dronesOwned,
+      drb: this.dronesBought,
+      s2dr: this.s2DronesOwned,
+      dock: this.dockLevel,
+      dsg: this.dockSkillGen,
+      dsl: this.droneSpeedLevel,
+      dhl: this.droneHarvestLevel,
+      s2sl: this.s2SpeedLevel,
+      s2hl: this.s2HarvestLevel,
       sp: this.skillPoints,
       sc: this.skillCurrency,
       tsp: this.totalSkillPointsEarned,
+      ssl: this.spawnSpeedLevel,
+      sbl: this.spawnBatchLevel,
+      fvl: this.flowerValueLevel,
+      fml: this.flowerMultiplierLevel,
+      mfl: this.megaFlowerLevel,
+      mul: this.mushroomLevel,
+      cal: this.capacityLevel,
+      prices: this.prices,
       perks: Object.fromEntries(
         Object.entries(this.skillPerks)
           .filter(([, v]) => v.owned)
           .map(([k]) => [k, 1])
       ),
-      v: 1,
     };
     return btoa(JSON.stringify(data));
   }
@@ -604,18 +634,62 @@ export class GameState {
   importSave(encoded) {
     try {
       const data = JSON.parse(atob(encoded));
-      if (!data || data.v !== 1) return false;
-      if (typeof data.sp === 'number') this.skillPoints = data.sp;
-      if (typeof data.sc === 'number') this.skillCurrency = data.sc;
-      if (typeof data.tsp === 'number') this.totalSkillPointsEarned = data.tsp;
-      if (data.perks) {
-        for (const id of Object.keys(data.perks)) {
-          if (this.skillPerks[id]) this.skillPerks[id].owned = true;
+      if (!data) return false;
+
+      // v1 saves: skill data only
+      if (data.v === 1) {
+        if (typeof data.sp === 'number') this.skillPoints = data.sp;
+        if (typeof data.sc === 'number') this.skillCurrency = data.sc;
+        if (typeof data.tsp === 'number') this.totalSkillPointsEarned = data.tsp;
+        if (data.perks) {
+          for (const id of Object.keys(data.perks)) {
+            if (this.skillPerks[id]) this.skillPerks[id].owned = true;
+          }
         }
+        this._notify();
+        this._onImport?.();
+        return true;
       }
-      this._notify();
-      this._onImport?.();
-      return true;
+
+      // v2 saves: full state
+      if (data.v === 2) {
+        if (typeof data.fl === 'number') this.flowers = data.fl;
+        if (typeof data.tfc === 'number') this.totalFlowersCollected = data.tfc;
+        if (typeof data.dr === 'number') this.dronesOwned = data.dr;
+        if (typeof data.drb === 'number') this.dronesBought = data.drb;
+        if (typeof data.s2dr === 'number') this.s2DronesOwned = data.s2dr;
+        if (typeof data.dock === 'number') this.dockLevel = data.dock;
+        if (typeof data.dsg === 'boolean') this.dockSkillGen = data.dsg;
+        if (typeof data.dsl === 'number') this.droneSpeedLevel = data.dsl;
+        if (typeof data.dhl === 'number') this.droneHarvestLevel = data.dhl;
+        if (typeof data.s2sl === 'number') this.s2SpeedLevel = data.s2sl;
+        if (typeof data.s2hl === 'number') this.s2HarvestLevel = data.s2hl;
+        if (typeof data.sp === 'number') this.skillPoints = data.sp;
+        if (typeof data.sc === 'number') this.skillCurrency = data.sc;
+        if (typeof data.tsp === 'number') this.totalSkillPointsEarned = data.tsp;
+        if (typeof data.ssl === 'number') this.spawnSpeedLevel = data.ssl;
+        if (typeof data.sbl === 'number') this.spawnBatchLevel = data.sbl;
+        if (typeof data.fvl === 'number') this.flowerValueLevel = data.fvl;
+        if (typeof data.fml === 'number') this.flowerMultiplierLevel = data.fml;
+        if (typeof data.mfl === 'number') this.megaFlowerLevel = data.mfl;
+        if (typeof data.mul === 'number') this.mushroomLevel = data.mul;
+        if (typeof data.cal === 'number') this.capacityLevel = data.cal;
+        if (data.prices) {
+          for (const [k, v] of Object.entries(data.prices)) {
+            if (k in this.prices) this.prices[k] = v;
+          }
+        }
+        if (data.perks) {
+          for (const id of Object.keys(data.perks)) {
+            if (this.skillPerks[id]) this.skillPerks[id].owned = true;
+          }
+        }
+        this._notify();
+        this._onImport?.();
+        return true;
+      }
+
+      return false;
     } catch {
       return false;
     }

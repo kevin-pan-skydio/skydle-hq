@@ -191,7 +191,7 @@ export class UI {
     document.getElementById('buy-dock-skill-gen').addEventListener('click', () => {
       if (this.state.buyDockSkillGen()) {
         this.droneManager.applyDockSkillGen();
-        this.showToast('★ Mega Dock active! Docks now generate skill XP.');
+        this.showToast('★ Ultimate Dock active! Docks now generate skill XP.');
       } else if (this.state.dockLevel < 1) {
         this.showToast('Buy Drone Dock first!');
       } else {
@@ -1004,7 +1004,12 @@ export class UI {
     const cur = Math.floor(this.state.skillCurrency).toLocaleString();
     const max = barMax.toLocaleString();
     this.skillBarLabelEl.textContent = cur + ' / ' + max;
-    this.convertBtn.classList.toggle('no-flowers', this.state.flowers < 1);
+    const noFlowers = this.state.flowers < 1;
+    this.convertBtn.classList.toggle('no-flowers', noFlowers);
+    const xpPreview = Math.floor(this.state.flowers * this.state.getSkillCurrencyPerFlower());
+    this.convertBtn.textContent = noFlowers
+      ? 'Convert All 🌸 → ★'
+      : `Convert All 🌸 → ★ (+${xpPreview.toLocaleString()} XP)`;
 
     // Skill tree
     this.skillMenuBalance.textContent = this.state.skillPoints + ' SP';

@@ -503,8 +503,7 @@ export class GameState {
   }
 
   getSkillBarMax() {
-    const base = SP.barSize;
-    return Math.floor(base * Math.pow(SP.barScale, this.totalSkillPointsEarned));
+    return SP.priceStep * (this.totalSkillPointsEarned + 1);
   }
 
   getSkillCurrencyPerFlower() {

@@ -30,43 +30,66 @@ export class BeehiveManager {
 
   _buildHiveMesh() {
     const group = new THREE.Group();
+    const wood = new THREE.MeshLambertMaterial({ color: 0x6b3a1f });
 
-    const bodyGeo = new THREE.CylinderGeometry(0.45, 0.55, 0.7, 6);
-    const bodyMat = new THREE.MeshLambertMaterial({ color: HIVE_COLOR });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 0.55;
-    group.add(body);
+    // Stand — four legs + platform
+    const legGeo = new THREE.BoxGeometry(0.08, 0.45, 0.08);
+    for (const [lx, lz] of [[0.22, 0.22], [-0.22, 0.22], [0.22, -0.22], [-0.22, -0.22]]) {
+      const leg = new THREE.Mesh(legGeo, wood);
+      leg.position.set(lx, 0.225, lz);
+      group.add(leg);
+    }
+    const platformGeo = new THREE.BoxGeometry(0.65, 0.06, 0.65);
+    const platform = new THREE.Mesh(platformGeo, wood);
+    platform.position.y = 0.48;
+    group.add(platform);
 
-    const roofGeo = new THREE.ConeGeometry(0.6, 0.35, 6);
-    const roofMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-    const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = 1.075;
+    // Hive body — stacked layers for a classic beehive look
+    const hiveColor = new THREE.MeshLambertMaterial({ color: HIVE_COLOR });
+    const hiveLight = new THREE.MeshLambertMaterial({ color: 0xffcc33 });
+    const layers = [
+      { r: 0.42, h: 0.18, y: 0.60, mat: hiveColor },
+      { r: 0.48, h: 0.18, y: 0.78, mat: hiveLight },
+      { r: 0.45, h: 0.18, y: 0.96, mat: hiveColor },
+      { r: 0.38, h: 0.16, y: 1.12, mat: hiveLight },
+      { r: 0.28, h: 0.14, y: 1.25, mat: hiveColor },
+    ];
+    for (const l of layers) {
+      const geo = new THREE.CylinderGeometry(l.r * 0.85, l.r, l.h, 8);
+      const mesh = new THREE.Mesh(geo, l.mat);
+      mesh.position.y = l.y;
+      group.add(mesh);
+    }
+
+    // Roof cap
+    const roofGeo = new THREE.ConeGeometry(0.22, 0.18, 8);
+    const roof = new THREE.Mesh(roofGeo, wood);
+    roof.position.y = 1.41;
     group.add(roof);
 
-    const holeGeo = new THREE.CircleGeometry(0.12, 8);
-    const holeMat = new THREE.MeshBasicMaterial({ color: 0x222200 });
+    // Entrance hole
+    const holeGeo = new THREE.CircleGeometry(0.1, 8);
+    const holeMat = new THREE.MeshBasicMaterial({ color: 0x1a1000 });
     const hole = new THREE.Mesh(holeGeo, holeMat);
-    hole.position.set(0, 0.5, 0.46);
-    hole.rotation.y = 0;
+    hole.position.set(0, 0.72, 0.49);
     group.add(hole);
 
-    group.castShadow = true;
     return group;
   }
 
   _buildRingMesh() {
-    const ringGeo = new THREE.RingGeometry(EFFECT_RADIUS - 0.08, EFFECT_RADIUS, 48);
-    const ringMat = new THREE.MeshBasicMaterial({
+    const discGeo = new THREE.CircleGeometry(EFFECT_RADIUS, 48);
+    const discMat = new THREE.MeshBasicMaterial({
       color: RING_COLOR,
       transparent: true,
-      opacity: 0.25,
-      side: THREE.DoubleSide,
+      opacity: 0.18,
+      depthWrite: false,
     });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.22;
-    this._ringMat = ringMat;
-    return ring;
+    const disc = new THREE.Mesh(discGeo, discMat);
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.y = 0.01;
+    this._ringMat = discMat;
+    return disc;
   }
 
   _pickRandomTile() {
@@ -86,9 +109,9 @@ export class BeehiveManager {
     this.hiveMesh.position.set(this.hiveX, 0, this.hiveZ);
     this.hiveMesh.visible = true;
 
-    this.ringMesh.position.set(this.hiveX, 0.22, this.hiveZ);
+    this.ringMesh.position.set(this.hiveX, 0.01, this.hiveZ);
     this.ringMesh.visible = true;
-    this._ringMat.opacity = 0.25;
+    this._ringMat.opacity = 0.18;
   }
 
   _despawn() {
@@ -120,9 +143,9 @@ export class BeehiveManager {
       const fadeStart = 3;
       if (this.activeTimer < fadeStart) {
         const t = this.activeTimer / fadeStart;
-        this._ringMat.opacity = 0.25 * t;
+        this._ringMat.opacity = 0.18 * t;
       } else {
-        const pulse = 0.2 + 0.1 * Math.sin(performance.now() * 0.004);
+        const pulse = 0.14 + 0.06 * Math.sin(performance.now() * 0.004);
         this._ringMat.opacity = pulse;
       }
     } else {

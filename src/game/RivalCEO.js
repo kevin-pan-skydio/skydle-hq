@@ -195,6 +195,7 @@ export class RivalCEO {
     this.mesh.position.set(wp.x, 0, wp.z);
     this.scene.add(this.mesh);
 
+    this._boostCEO();
     if (this._modalEl) this._modalEl.classList.add('visible');
     this._desaturateWorld();
   }
@@ -204,6 +205,7 @@ export class RivalCEO {
     this._phase = 'idle';
     this._phaseTimer = this._devMode ? 10 : RC.spawnInterval;
 
+    this._unboostCEO();
     if (this.mesh) this.scene.remove(this.mesh);
     if (this._modalEl) this._modalEl.classList.remove('visible');
     this._restoreWorld();
@@ -213,6 +215,24 @@ export class RivalCEO {
     if (this.active) this._despawn();
     this._phase = 'initial';
     this._phaseTimer = this._devMode ? 10 : RC.initialDelay;
+  }
+
+  _boostCEO() {
+    if (!this.mesh) return;
+    this.mesh.traverse((child) => {
+      if (child.isMesh && child.material) {
+        child.material.emissive = child.material.color.clone().multiplyScalar(0.45);
+      }
+    });
+  }
+
+  _unboostCEO() {
+    if (!this.mesh) return;
+    this.mesh.traverse((child) => {
+      if (child.isMesh && child.material) {
+        child.material.emissive.setHex(0x000000);
+      }
+    });
   }
 
   _desaturateWorld() {

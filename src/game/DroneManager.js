@@ -436,7 +436,7 @@ export class DroneManager {
     this.drones = [];
     this.reservedIds.clear();
     this.placementMode = false;
-    this._dockHoloMats = null;
+    this._dockSkillGen = false;
     this._notifyPlacement();
   }
 
@@ -614,12 +614,12 @@ export class DroneManager {
   }
 
   applyDockSkillGen() {
-    this._dockHoloMats = [];
+    this._dockSkillGen = true;
     for (const drone of this.drones) {
-      if (drone.dockMesh) {
-        const holoMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-        drone.dockMesh.material = holoMat;
-        this._dockHoloMats.push(holoMat);
+      if (drone.dockMesh && !drone.dockHoloMat) {
+        drone.dockMesh.material = new THREE.MeshLambertMaterial({
+          color: 0xbb44ff, vertexColors: false,
+        });
       }
     }
   }
@@ -641,6 +641,12 @@ export class DroneManager {
       prop.material = propHoloMat;
     }
     drone.propHoloMat = propHoloMat;
+
+    if (drone.dockMesh) {
+      const dockHoloMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+      drone.dockMesh.material = dockHoloMat;
+      drone.dockHoloMat = dockHoloMat;
+    }
   }
 
   update(dt) {
@@ -660,13 +666,14 @@ export class DroneManager {
         const t = (Math.sin(now * 0.003) + 1) * 0.5;
         drone.holoMat.color.lerpColors(_holoLight, _holoDark, t);
         if (drone.propHoloMat) drone.propHoloMat.color.lerpColors(_holoLight, _holoDark, t * 0.8);
+        if (drone.dockHoloMat) drone.dockHoloMat.color.lerpColors(_holoLight, _holoDark, t);
       }
 
-      if (this._dockHoloMats && drone.dockMesh && !drone._dockHolo) {
-        const holoMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-        drone.dockMesh.material = holoMat;
-        this._dockHoloMats.push(holoMat);
-        drone._dockHolo = true;
+      if (this._dockSkillGen && drone.dockMesh && !drone._dockSkillGenApplied && !drone.dockHoloMat) {
+        drone.dockMesh.material = new THREE.MeshLambertMaterial({
+          color: 0xbb44ff, vertexColors: false,
+        });
+        drone._dockSkillGenApplied = true;
       }
 
       if (isGrounded) {
@@ -741,12 +748,8 @@ export class DroneManager {
       }
     }
 
-    if (this._dockHoloMats && this._dockHoloMats.length > 0) {
-      const dt = (Math.sin(now * 0.002) + 1) * 0.5;
-      for (const mat of this._dockHoloMats) {
-        mat.color.lerpColors(_holoLight, _holoDark, dt);
-      }
-    }
+
+
   }
 
   _claim(id) {

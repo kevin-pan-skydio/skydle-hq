@@ -180,7 +180,7 @@ export class FlowerManager {
     const shroomMat = new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 80, specular: 0x886688 });
     const shroomMesh = new THREE.InstancedMesh(shroomGeo, shroomMat, MAX_INSTANCES);
     shroomMesh.count = 0;
-    shroomMesh.castShadow = true;
+    shroomMesh.castShadow = false;
     shroomMesh.frustumCulled = false;
     this.scene.add(shroomMesh);
     this._variants.set('mushroom', { mesh: shroomMesh, colorHex: MUSHROOM_COLOR, isMega: false });
@@ -204,15 +204,35 @@ export class FlowerManager {
     this._megaHaloMesh.frustumCulled = false;
     this.scene.add(this._megaHaloMesh);
 
-    // Mushroom glow
+    // Mushroom holo — inner purple ring
     this._shroomGlowGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.05, 10);
     this._shroomGlowMat = new THREE.MeshBasicMaterial({
-      color: 0xb040e0, transparent: true, opacity: 0.25,
+      color: 0xb040e0, transparent: true, opacity: 0.28,
     });
     this._shroomGlowMesh = new THREE.InstancedMesh(this._shroomGlowGeo, this._shroomGlowMat, MAX_INSTANCES);
     this._shroomGlowMesh.count = 0;
     this._shroomGlowMesh.frustumCulled = false;
     this.scene.add(this._shroomGlowMesh);
+
+    // Mushroom holo — outer Skydio blue ring
+    this._shroomHaloGeo = new THREE.CylinderGeometry(0.9, 0.9, 0.04, 10);
+    this._shroomHaloMat = new THREE.MeshBasicMaterial({
+      color: 0x1a9dff, transparent: true, opacity: 0.18,
+    });
+    this._shroomHaloMesh = new THREE.InstancedMesh(this._shroomHaloGeo, this._shroomHaloMat, MAX_INSTANCES);
+    this._shroomHaloMesh.count = 0;
+    this._shroomHaloMesh.frustumCulled = false;
+    this.scene.add(this._shroomHaloMesh);
+
+    const shadowGeo = new THREE.CircleGeometry(0.35, 8);
+    shadowGeo.rotateX(-Math.PI / 2);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      color: 0x000000, transparent: true, opacity: 0.18, depthWrite: false,
+    });
+    this._shadowMesh = new THREE.InstancedMesh(shadowGeo, shadowMat, MAX_INSTANCES);
+    this._shadowMesh.count = 0;
+    this._shadowMesh.frustumCulled = false;
+    this.scene.add(this._shadowMesh);
 
     this._collectPool = [];
     for (let i = 0; i < COLLECT_POOL_SIZE; i++) {
@@ -221,6 +241,10 @@ export class FlowerManager {
       this.scene.add(mesh);
       this._collectPool.push(mesh);
     }
+
+    this._instancesDirty = true;
+    this._animTimer = 0;
+    this._animInterval = 5;
 
     for (let i = 0; i < F.initialSpawnCount; i++) {
       this.spawnFlower();
@@ -236,6 +260,7 @@ export class FlowerManager {
       this._collectPool.push(anim.mesh);
     }
     this.collectAnimations = [];
+    this._instancesDirty = true;
     this._rebuildInstances();
   }
 
@@ -252,7 +277,7 @@ export class FlowerManager {
     const geo = buildFlowerTemplate(colorHex, isMega);
     const mesh = new THREE.InstancedMesh(geo, this._instanceMat, MAX_INSTANCES);
     mesh.count = 0;
-    mesh.castShadow = true;
+    mesh.castShadow = false;
     mesh.frustumCulled = false;
     this.scene.add(mesh);
     this._variants.set(key, { mesh, colorHex, isMega });
@@ -306,6 +331,7 @@ export class FlowerManager {
     };
     this.flowers.push(flower);
     this.flowerById.set(id, flower);
+    this._instancesDirty = true;
   }
 
   _rebuildInstances() {
@@ -314,6 +340,8 @@ export class FlowerManager {
     let megaGlowCount = 0;
     let megaHaloCount = 0;
     let shroomGlowCount = 0;
+    let shroomHaloCount = 0;
+    let shadowCount = 0;
 
     const now = performance.now();
 
@@ -343,8 +371,15 @@ export class FlowerManager {
       this._dummy.updateMatrix();
       variant.mesh.setMatrixAt(idx, this._dummy.matrix);
 
+      // Flat shadow disc on the ground
+      const shadowScale = (f.isMega || f.isMushroom) ? scale * 1.6 : scale;
+      this._dummy.position.set(f.x, 0.005, f.z);
+      this._dummy.scale.setScalar(shadowScale);
+      this._dummy.rotation.set(0, 0, 0);
+      this._dummy.updateMatrix();
+      this._shadowMesh.setMatrixAt(shadowCount++, this._dummy.matrix);
+
       if (f.isMega) {
-        // Inner glow — pulses
         const glowPulse = 0.9 + Math.sin(now * 0.005 + f.id * 3.1) * 0.15;
         this._dummy.position.set(f.x, 0.02, f.z);
         this._dummy.scale.setScalar(scale * glowPulse);
@@ -352,7 +387,6 @@ export class FlowerManager {
         this._dummy.updateMatrix();
         this._megaGlowMesh.setMatrixAt(megaGlowCount++, this._dummy.matrix);
 
-        // Outer halo — slower counter-pulse
         const haloPulse = 0.85 + Math.sin(now * 0.003 + f.id * 2.0 + 1.5) * 0.2;
         this._dummy.scale.setScalar(scale * haloPulse);
         this._dummy.updateMatrix();
@@ -360,12 +394,19 @@ export class FlowerManager {
       }
 
       if (f.isMushroom) {
-        const glowPulse = 0.25 + Math.sin(now * 0.004 + f.id * 2.3) * 0.1;
+        // Inner purple ring
+        const glowPulse = 0.9 + Math.sin(now * 0.005 + f.id * 2.3) * 0.15;
         this._dummy.position.set(f.x, 0.02, f.z);
-        this._dummy.scale.setScalar(scale * (0.9 + glowPulse * 0.4));
+        this._dummy.scale.setScalar(scale * glowPulse);
         this._dummy.rotation.set(0, 0, 0);
         this._dummy.updateMatrix();
         this._shroomGlowMesh.setMatrixAt(shroomGlowCount++, this._dummy.matrix);
+
+        // Outer Skydio blue ring — counter-pulse
+        const haloPulse = 0.85 + Math.sin(now * 0.003 + f.id * 1.8 + 1.5) * 0.2;
+        this._dummy.scale.setScalar(scale * haloPulse);
+        this._dummy.updateMatrix();
+        this._shroomHaloMesh.setMatrixAt(shroomHaloCount++, this._dummy.matrix);
       }
     }
 
@@ -374,12 +415,16 @@ export class FlowerManager {
       variant.mesh.count = c;
       if (c > 0) variant.mesh.instanceMatrix.needsUpdate = true;
     }
+    this._shadowMesh.count = shadowCount;
+    if (shadowCount > 0) this._shadowMesh.instanceMatrix.needsUpdate = true;
     this._megaGlowMesh.count = megaGlowCount;
     if (megaGlowCount > 0) this._megaGlowMesh.instanceMatrix.needsUpdate = true;
     this._megaHaloMesh.count = megaHaloCount;
     if (megaHaloCount > 0) this._megaHaloMesh.instanceMatrix.needsUpdate = true;
     this._shroomGlowMesh.count = shroomGlowCount;
     if (shroomGlowCount > 0) this._shroomGlowMesh.instanceMatrix.needsUpdate = true;
+    this._shroomHaloMesh.count = shroomHaloCount;
+    if (shroomHaloCount > 0) this._shroomHaloMesh.instanceMatrix.needsUpdate = true;
   }
 
   update(dt) {
@@ -396,11 +441,19 @@ export class FlowerManager {
     for (const flower of this.flowers) {
       if (flower.spawning) {
         flower.age += dt;
-        if (flower.age >= 0.35) flower.spawning = false;
+        if (flower.age >= 0.35) {
+          flower.spawning = false;
+          this._instancesDirty = true;
+        }
       }
     }
 
-    this._rebuildInstances();
+    this._animTimer += dt;
+    if (this._instancesDirty || this._animTimer >= this._animInterval) {
+      this._rebuildInstances();
+      this._instancesDirty = false;
+      this._animTimer = 0;
+    }
 
     let i = this.collectAnimations.length;
     while (i-- > 0) {
@@ -494,6 +547,7 @@ export class FlowerManager {
     if (index !== last) this.flowers[index] = this.flowers[last];
     this.flowers.pop();
     this.flowerById.delete(flower.id);
+    this._instancesDirty = true;
 
     if (this._collectPool.length > 0) {
       const mesh = this._collectPool.pop();

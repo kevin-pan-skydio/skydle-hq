@@ -4,7 +4,7 @@
   },
   "collectibles": {
     "flowers": {
-      "baseSpawnInterval": 3.5,
+      "baseSpawnInterval": 5,
       "initialSpawnCount": 5,
       "maxByGridSize": {
         "10": 70,
@@ -16,12 +16,12 @@
       },
       "spawnUpgrade": {
         "maxLevel": 25,
-        "minInterval": 0.8,
+        "minInterval": 1.2,
         "price": { "base": 15, "scale": [1.5, 2.0, 1.2, 1200000] }
       },
       "batchUpgrade": {
         "maxLevel": 25,
-        "maxCount": 25,
+        "maxCount": 18,
         "guaranteed": [1, 2, 3],
         "postGuaranteedMin": 3,
         "maxRollProb": 0.82,
@@ -53,10 +53,10 @@
       },
       "mushroomUpgrade": {
         "maxLevel": 5,
-        "chancePerLevel": 0.06,
-        "flowerValue": 3,
-        "skillXpPerCollect": 500,
-        "price": { "levels": [500000, 1000000, 2000000, 4000000, 7000000] }
+        "chancePerLevel": 0.05,
+        "flowerValue": 10000,
+        "skillXpPerCollect": 100000,
+        "price": { "levels": [200000, 500000, 1000000, 2000000, 3000000] }
       }
     }
   },
@@ -125,9 +125,8 @@
     }
   },
   "skillPoints": {
-    "flowersPerSkillCurrency": 1,
-    "barSize": 10000000,
-    "barScale": 1.2
+    "flowersPerSkillCurrency": 0.1,
+    "priceStep": 2000000
   },
   "rivalCEO": {
     "initialDelay": 480,

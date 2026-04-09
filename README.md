@@ -70,7 +70,7 @@ Skill points are earned by filling a skill XP bar. The bar cost grows exponentia
 Each subsequent skill point costs 1.6x more than the last. Sources of skill XP:
 
 - **Convert flowers** — 1 flower = 1 skill XP (manual, costs flowers)
-- **Mega Dock** — passive generation, 10 XP/s per drone (requires Drone Dock)
+- **Ultimate Dock** — passive generation, 10 XP/s per drone (requires Drone Dock)
 - **Mushrooms** — 500 XP per mushroom collected (skill XP only, no flowers)
 
 ## Rival CEO

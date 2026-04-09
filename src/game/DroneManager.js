@@ -494,6 +494,7 @@ export class DroneManager {
       harvestCount: 0,
       totalHarvested: 0,
       totalValueHarvested: 0,
+      sortieTimer: 0,
       isUltimate: false,
       isS2,
       state: 'idle',
@@ -549,6 +550,7 @@ export class DroneManager {
       harvestCount: 0,
       totalHarvested: 0,
       totalValueHarvested: 0,
+      sortieTimer: 0,
       isUltimate: false,
       isS2,
       state: 'idle',
@@ -704,6 +706,15 @@ export class DroneManager {
         drone.harvestBar.visible = false;
       }
 
+      if (drone.state === 'flying' || drone.state === 'harvesting') {
+        drone.sortieTimer += dt;
+        if (drone.sortieTimer >= 30) {
+          this._release(drone);
+          drone.targetId = null;
+          drone.state = 'returning';
+        }
+      }
+
       switch (drone.state) {
         case 'idle':
           this.handleIdle(drone);
@@ -771,6 +782,7 @@ export class DroneManager {
     if (!nearest) return;
 
     drone.harvestCount = 0;
+    drone.sortieTimer = 0;
     drone.targetX = nearest.x;
     drone.targetZ = nearest.z;
     drone.targetId = nearest.id;
@@ -846,6 +858,7 @@ export class DroneManager {
         }
         drone.totalHarvested++;
         drone.totalValueHarvested += harvestVal;
+        drone.sortieTimer = 0;
       }
       this._release(drone);
       drone.harvestCount++;

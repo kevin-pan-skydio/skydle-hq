@@ -253,7 +253,7 @@ export class Game {
     this._frameAccum = (this._frameAccum || 0) + rawDt;
     const minInterval = 1 / 70;
     if (this._frameAccum < minInterval) return;
-    const wallDt = this._frameAccum;
+    const wallDt = Math.min(this._frameAccum, 0.1);
     const dt = wallDt * this.timeMultiplier;
     this._frameAccum = 0;
 

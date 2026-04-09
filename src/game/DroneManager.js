@@ -746,9 +746,15 @@ export class DroneManager {
           for (const c of collected) {
             if (!c) continue;
             if (c.isMushroom) {
-              const xp = this.state.getMushroomSkillXp();
-              this.state.addSkillXp(xp);
-              this.floatingText.spawn(c.x, c.y, c.z, '+★' + xp);
+              if (Math.random() < 0.5) {
+                const xp = this.state.getMushroomSkillXp();
+                this.state.addSkillXp(xp);
+                this.floatingText.spawn(c.x, c.y, c.z, '+★' + xp);
+              } else {
+                const val = this.state.getMushroomFlowerValue();
+                this.state.addFlowers(val);
+                this.floatingText.spawn(c.x, c.y, c.z, '+' + val);
+              }
             } else {
               let val = this.state.getCollectionValue(c.value);
               if (this.beehive?.isInRadius(c.x, c.z)) val *= 2;
@@ -848,9 +854,15 @@ export class DroneManager {
       let harvestVal = 0;
       if (collected) {
         if (collected.isMushroom) {
-          const xp = this.state.getMushroomSkillXp();
-          this.state.addSkillXp(xp);
-          this.floatingText.spawn(collected.x, collected.y, collected.z, '+★' + xp);
+          if (Math.random() < 0.5) {
+            const xp = this.state.getMushroomSkillXp();
+            this.state.addSkillXp(xp);
+            this.floatingText.spawn(collected.x, collected.y, collected.z, '+★' + xp);
+          } else {
+            const val = this.state.getMushroomFlowerValue();
+            this.state.addFlowers(val);
+            this.floatingText.spawn(collected.x, collected.y, collected.z, '+' + val);
+          }
         } else {
           harvestVal = this.state.getCollectionValue(collected.value);
           if (this.beehive?.isInRadius(collected.x, collected.z)) harvestVal *= 2;

@@ -190,9 +190,15 @@ export class Game {
     const flowerHit = this.flowerManager.checkClick(this.raycaster);
     if (flowerHit) {
       if (flowerHit.isMushroom) {
-        const xp = this.state.getMushroomSkillXp();
-        this.state.addSkillXp(xp);
-        this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, '+★' + xp);
+        if (Math.random() < 0.5) {
+          const xp = this.state.getMushroomSkillXp();
+          this.state.addSkillXp(xp);
+          this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, '+★' + xp);
+        } else {
+          const val = this.state.getMushroomFlowerValue();
+          this.state.addFlowers(val);
+          this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, '+' + val);
+        }
       } else {
         let val = this.state.getCollectionValue(flowerHit.value);
         if (this.beehive.isInRadius(flowerHit.x, flowerHit.z)) val *= 2;

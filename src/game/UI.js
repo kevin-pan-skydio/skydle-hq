@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import CONFIG from '../config.json';
+import SKILL_TREE from '../config-skill-tree.json';
 
 const R1 = CONFIG.drones.r1;
+const S2CFG = CONFIG.drones.s2;
 const UPG = R1.upgrades;
+const S2UPG = S2CFG.upgrades;
 
 export class UI {
   constructor(state, droneManager, flowerManager, camera, renderer) {
@@ -83,14 +86,23 @@ export class UI {
     this.dronePopupUpgrades = document.getElementById('drone-popup-upgrades');
     this.selectedDroneIdx = -1;
 
+    this.skillOverlay = document.getElementById('skill-overlay');
+    this.skillMenuBalance = document.getElementById('skill-menu-balance');
+    this.skillTreeLines = document.getElementById('skill-tree-lines');
+
     this.setupShop();
     this.setupTabs();
     this.setupUpgrades();
     this.setupDronePopup();
     this.setupSkillPoints();
+    this._buildSkillTreeNodes();
+    this.setupSkillMenu();
+    this.setupWelcome();
+    this.setupSaveLoad();
     this.state.onChange(() => this.updateDisplay());
     this.droneManager.onPlacementChange((active) => this.onPlacementChange(active));
     this.fpsTimer = 0;
+    this.updateDisplay();
   }
 
   setupTabs() {
@@ -115,23 +127,54 @@ export class UI {
       this.shopEl.classList.add('hidden');
     });
 
+
     this.buyR1Btn.addEventListener('click', () => {
+      if (this.droneManager.placementMode) {
+        this.showToast('Place your current drone first!');
+        return;
+      }
       if (this.state.buyDrone()) {
         this.showToast('Skydio R1 purchased! Place it on a purple tile.');
         this.shopEl.classList.add('hidden');
         this.closeDronePopup();
-        this.droneManager.enterPlacementMode();
+        this.droneManager.enterPlacementMode(false);
+      } else {
+        this.showToast('Not enough flowers!');
+      }
+    });
+
+    this.buyS2Btn = document.getElementById('buy-s2-btn');
+    this.s2CostEl = document.getElementById('s2-cost');
+
+    this.buyS2Btn.addEventListener('click', () => {
+      if (this.droneManager.placementMode) {
+        this.showToast('Place your current drone first!');
+        return;
+      }
+      if (this.state.buyS2Drone()) {
+        this.showToast('Skydio S2 purchased! Place it on a purple tile.');
+        this.shopEl.classList.add('hidden');
+        this.closeDronePopup();
+        this.droneManager.enterPlacementMode(true);
       } else {
         this.showToast('Not enough flowers!');
       }
     });
 
     document.getElementById('cancel-placement').addEventListener('click', () => {
+      const wasS2 = this.droneManager._pendingS2;
       this.droneManager.cancelPlacement();
-      this.state.dronesOwned--;
-      const refund = this.state.lastDroneCost || 0;
-      this.state.flowers += refund;
-      this.state.prices['r1-drone'] = refund;
+      if (wasS2) {
+        this.state.s2DronesOwned--;
+        const refund = this.state.lastS2Cost || 0;
+        this.state.flowers += refund;
+        this.state.prices['s2-drone'] = refund;
+      } else {
+        this.state.dronesOwned--;
+        const refund = this.state.lastDroneCost || 0;
+        this.state.flowers += refund;
+        this.state.prices['r1-drone'] = refund;
+      }
       this.state._notify();
       this.showToast('Placement cancelled, flowers refunded.');
     });
@@ -147,6 +190,7 @@ export class UI {
 
     document.getElementById('buy-dock-skill-gen').addEventListener('click', () => {
       if (this.state.buyDockSkillGen()) {
+        this.droneManager.applyDockSkillGen();
         this.showToast('★ Mega Dock active! Docks now generate skill XP.');
       } else if (this.state.dockLevel < 1) {
         this.showToast('Buy Drone Dock first!');
@@ -166,6 +210,22 @@ export class UI {
     document.getElementById('buy-global-harvest').addEventListener('click', () => {
       if (this.state.buyGlobalHarvest()) {
         this.showToast(`Harvester+ upgraded for all R1s! Lv.${this.state.droneHarvestLevel}`);
+      } else {
+        this.showToast('Not enough flowers!');
+      }
+    });
+
+    document.getElementById('buy-s2-speed').addEventListener('click', () => {
+      if (this.state.buyS2Speed()) {
+        this.showToast(`S2 Propeller+ upgraded! Lv.${this.state.s2SpeedLevel}`);
+      } else {
+        this.showToast('Not enough flowers!');
+      }
+    });
+
+    document.getElementById('buy-s2-harvest').addEventListener('click', () => {
+      if (this.state.buyS2Harvest()) {
+        this.showToast(`S2 Harvester+ upgraded! Lv.${this.state.s2HarvestLevel}`);
       } else {
         this.showToast('Not enough flowers!');
       }
@@ -245,15 +305,22 @@ export class UI {
     this.dronePopupUpgrades.addEventListener('click', (e) => {
       const ultBtn = e.target.closest('.popup-buy-ultimate');
       if (!ultBtn) return;
-      const cost = this.state.prices['r1-ultimate'];
+      const drones = this.droneManager.getDrones();
+      const drone = drones[this.selectedDroneIdx];
+      if (!drone) return;
+      const isS2 = drone.isS2;
+      const priceKey = isS2 ? 's2-ultimate' : 'r1-ultimate';
+      const ultCfg = isS2 ? S2UPG.ultimate : UPG.ultimate;
+      const cost = this.state.prices[priceKey];
       if (!this.state.spendFlowers(cost)) {
         this.showToast('Not enough flowers!');
         return;
       }
       if (this.droneManager.upgradeDroneUltimate(this.selectedDroneIdx)) {
-        this.showToast('🌈 Ultimate R1 activated! 3x all stats!');
+        const typeName = isS2 ? 'S2' : 'R1';
+        this.showToast(`🌈 Ultimate ${typeName} activated!`);
         if (!this.state.devMode) {
-          this.state.prices['r1-ultimate'] += UPG.ultimate.priceStep;
+          this.state.prices[priceKey] += ultCfg.priceStep;
         }
         this.state._notify();
         this.renderDronePopup();
@@ -279,6 +346,214 @@ export class UI {
     });
   }
 
+  _buildSkillTreeNodes() {
+    const container = document.getElementById('skill-tree-nodes');
+    container.innerHTML = '';
+    for (const [id, node] of Object.entries(SKILL_TREE.nodes)) {
+      const posClass = node.position === 'center' ? '' : ` ${node.position}`;
+      const div = document.createElement('div');
+      div.className = `skill-node tier-${node.tier}${posClass}`;
+      div.dataset.skill = id;
+      div.innerHTML = `
+        <div class="node-ring"><div class="node-icon">${node.icon}</div></div>
+        <div class="node-label">${node.label}</div>
+        <div class="node-desc">${node.desc}</div>
+        <div class="node-cost">${node.cost} ★</div>`;
+      container.appendChild(div);
+    }
+  }
+
+  setupSkillMenu() {
+    this.skillPointsDisplayEl.style.cursor = 'pointer';
+    this.skillPointsDisplayEl.addEventListener('click', (e) => {
+      if (e.target.id === 'skill-info-icon') return;
+      this.skillOverlay.classList.toggle('hidden');
+      if (!this.skillOverlay.classList.contains('hidden')) {
+        this._drawTreeLines();
+      }
+    });
+
+    document.getElementById('skill-menu-close').addEventListener('click', () => {
+      this.skillOverlay.classList.add('hidden');
+    });
+
+    this.skillOverlay.addEventListener('click', (e) => {
+      if (e.target === this.skillOverlay) {
+        this.skillOverlay.classList.add('hidden');
+      }
+    });
+
+    this._confirmEl = document.getElementById('skill-confirm');
+    this._confirmNameEl = document.getElementById('skill-confirm-name');
+    this._confirmDescEl = document.getElementById('skill-confirm-desc');
+    this._confirmCostEl = document.getElementById('skill-confirm-cost-val');
+    this._pendingPerkId = null;
+
+    document.getElementById('skill-confirm-no').addEventListener('click', () => {
+      this._confirmEl.classList.add('hidden');
+      this._pendingPerkId = null;
+    });
+
+    document.getElementById('skill-confirm-yes').addEventListener('click', () => {
+      this._confirmEl.classList.add('hidden');
+      const id = this._pendingPerkId;
+      this._pendingPerkId = null;
+      if (!id) return;
+      const name = document.querySelector(`.skill-node[data-skill="${id}"] .node-label`).textContent;
+      if (this.state.buySkillPerk(id)) {
+        this.showToast(`★ ${name} unlocked! Board reset — rebuild your empire.`);
+        this._drawTreeLines();
+        this.closeDronePopup();
+        setTimeout(() => this.skillOverlay.classList.add('hidden'), 600);
+      }
+    });
+
+    document.querySelectorAll('.skill-node').forEach((node) => {
+      node.addEventListener('click', () => {
+        const id = node.dataset.skill;
+        const perk = this.state.skillPerks[id];
+        if (perk?.owned) {
+          this.showToast('Already unlocked!');
+          return;
+        }
+        if (!this.state.isPerkUnlocked(id)) {
+          this.showToast('Unlock the prerequisite first!');
+          return;
+        }
+        if (this.state.skillPoints < perk.cost) {
+          this.showToast('Not enough skill points!');
+          return;
+        }
+        this._pendingPerkId = id;
+        this._confirmNameEl.textContent = node.querySelector('.node-label').textContent;
+        this._confirmDescEl.textContent = node.querySelector('.node-desc').textContent;
+        this._confirmCostEl.textContent = perk.cost + ' ★';
+        this._confirmEl.classList.remove('hidden');
+      });
+    });
+  }
+
+  setupWelcome() {
+    const modal = document.getElementById('welcome-modal');
+    if (!modal) return;
+    if (this.state.dronesOwned > 0) {
+      modal.classList.add('hidden');
+      return;
+    }
+    document.getElementById('welcome-go').addEventListener('click', () => {
+      modal.classList.add('hidden');
+      this.buyR1Btn.click();
+    });
+    const loadFileInput = document.getElementById('load-file-input');
+    document.getElementById('welcome-load').addEventListener('click', () => {
+      loadFileInput.click();
+    });
+    loadFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (this.state.importSave(reader.result.trim())) {
+          modal.classList.add('hidden');
+          this.showToast('Save loaded!');
+          this.updateDisplay();
+        } else {
+          this.showToast('Invalid save file');
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  setupSaveLoad() {
+    const menuBtn = document.getElementById('game-menu-btn');
+    const menu = document.getElementById('game-menu');
+    const saveBtn = document.getElementById('btn-save');
+    const loadBtn = document.getElementById('btn-load');
+    const loadInput = document.getElementById('load-file-game');
+    if (!menuBtn || !menu) return;
+
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!menu.contains(e.target) && e.target !== menuBtn) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    saveBtn.addEventListener('click', () => {
+      const data = this.state.exportSave();
+      const blob = new Blob([data], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'skydle-hq.skydle';
+      a.click();
+      URL.revokeObjectURL(url);
+      menu.classList.add('hidden');
+      this.showToast('Game saved!');
+    });
+
+    loadBtn.addEventListener('click', () => {
+      loadInput.click();
+    });
+
+    loadInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (this.state.importSave(reader.result.trim())) {
+          this.showToast('Save loaded!');
+          this.updateDisplay();
+        } else {
+          this.showToast('Invalid save file');
+        }
+        loadInput.value = '';
+      };
+      reader.readAsText(file);
+      menu.classList.add('hidden');
+    });
+  }
+
+  _drawTreeLines() {
+    const svg = this.skillTreeLines;
+    const body = document.getElementById('skill-tree-body');
+    const rect = body.getBoundingClientRect();
+    svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+    svg.innerHTML = '';
+
+    const branches = SKILL_TREE.branches;
+
+    for (const [fromId, toId] of branches) {
+      const fromEl = document.querySelector(`.skill-node[data-skill="${fromId}"] .node-ring`);
+      const toEl = document.querySelector(`.skill-node[data-skill="${toId}"] .node-ring`);
+      if (!fromEl || !toEl) continue;
+
+      const fr = fromEl.getBoundingClientRect();
+      const tr = toEl.getBoundingClientRect();
+      const x1 = fr.left + fr.width / 2 - rect.left;
+      const y1 = fr.top + fr.height / 2 - rect.top;
+      const x2 = tr.left + tr.width / 2 - rect.left;
+      const y2 = tr.top + tr.height / 2 - rect.top;
+
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', x1);
+      line.setAttribute('y1', y1);
+      line.setAttribute('x2', x2);
+      line.setAttribute('y2', y2);
+
+      const fromOwned = this.state.hasPerk(fromId);
+      const toOwned = this.state.hasPerk(toId);
+      if (fromOwned && toOwned) line.classList.add('active');
+
+      svg.appendChild(line);
+    }
+  }
+
   showDronePopup(droneIdx) {
     this.selectedDroneIdx = droneIdx;
     this.dronePopup.classList.remove('hidden');
@@ -300,33 +575,40 @@ export class UI {
     }
 
     const num = this.selectedDroneIdx + 1;
-    const label = drone.isUltimate ? `✨ Ultimate R1 #${num}` : `R1 #${num}`;
+    const typeName = drone.isS2 ? 'S2' : 'R1';
+    const label = drone.isUltimate ? `✨ Ultimate ${typeName} #${num}` : `${typeName} #${num}`;
     this.dronePopupTitle.textContent = label;
 
     this._updateDronePopupStatus(drone);
 
     let upgradesHtml = '';
 
+    const isS2 = drone.isS2;
+    const ultPriceKey = isS2 ? 's2-ultimate' : 'r1-ultimate';
+    const ultName = isS2 ? 'Ultimate S2' : 'Ultimate R1';
+    const ultHarvests = isS2 ? S2UPG.ultimate.harvestsPerSortie : UPG.ultimate.harvestsPerSortie;
+    const ultDesc = `+50% speed · ${ultHarvests} flowers per run · Rainbow Holo`;
+
     if (drone.isUltimate) {
       upgradesHtml += `<div class="popup-upgrade">
         <div class="item-icon" style="font-size:18px;width:32px;height:32px;">🌈</div>
         <div class="popup-upgrade-info">
-          <div class="popup-upgrade-name">Ultimate R1</div>
-          <div class="popup-upgrade-desc">3x all stats · Rainbow Holo</div>
+          <div class="popup-upgrade-name">${ultName}</div>
+          <div class="popup-upgrade-desc">${ultDesc}</div>
         </div>
         <span class="popup-upgrade-done">✓ Active</span>
       </div>`;
     } else {
-      const ultCost = this.state.prices['r1-ultimate'];
-      const canAfford = this.state.canAfford('r1-ultimate');
+      const ultCost = this.state.prices[ultPriceKey];
+      const canAfford = this.state.canAfford(ultPriceKey);
       upgradesHtml += `<div class="popup-upgrade">
         <div class="item-icon" style="font-size:18px;width:32px;height:32px;">🌈</div>
         <div class="popup-upgrade-info">
-          <div class="popup-upgrade-name">Ultimate R1</div>
-          <div class="popup-upgrade-desc">3x speed, 3x harvest, 3x cooldown · Rainbow Holo mode</div>
+          <div class="popup-upgrade-name">${ultName}</div>
+          <div class="popup-upgrade-desc">${ultDesc} mode</div>
         </div>
       </div>
-      <button class="buy-btn popup-buy-ultimate popup-buy-row${canAfford ? '' : ' cannot-afford'}">${ultCost} 🌸</button>`;
+      <button class="buy-btn popup-buy-ultimate popup-buy-row${canAfford ? '' : ' cannot-afford'}">${ultCost.toLocaleString()} 🌸</button>`;
     }
 
     this.dronePopupUpgrades.innerHTML = upgradesHtml;
@@ -392,8 +674,16 @@ export class UI {
     this.flowerCountEl.textContent = Math.floor(this.state.flowers);
 
     // Buy R1 button
-    this.costEl.textContent = this.state.prices['r1-drone'] + ' 🌸';
+    this.costEl.textContent = this.state.prices['r1-drone'].toLocaleString() + ' 🌸';
     this.buyR1Btn.classList.toggle('cannot-afford', !this.state.canAfford('r1-drone'));
+
+    if (this.state.hasPerk('s2Drone')) {
+      this.buyS2Btn.classList.remove('hidden');
+      this.s2CostEl.textContent = this.state.prices['s2-drone'].toLocaleString() + ' 🌸';
+      this.buyS2Btn.classList.toggle('cannot-afford', !this.state.canAfford('s2-drone'));
+    } else {
+      this.buyS2Btn.classList.add('hidden');
+    }
 
     // Global drone upgrades
     const hasDock = this.state.dockLevel >= 1;
@@ -403,44 +693,122 @@ export class UI {
       dockBtn.textContent = '✓ Owned';
       dockBtn.classList.add('cannot-afford');
     } else {
-      this.dockCostEl.textContent = this.state.prices['r1-dock'] + ' 🌸';
+      this.dockCostEl.textContent = this.state.prices['r1-dock'].toLocaleString() + ' 🌸';
       dockBtn.classList.toggle('cannot-afford', !this.state.canAfford('r1-dock'));
     }
 
-    // Dock Skill Generator — only visible after dock is owned
-    if (hasDock) {
-      this.dockSkillGenItem.classList.remove('hidden');
-      const genBtn = document.getElementById('buy-dock-skill-gen');
-      if (this.state.dockSkillGen) {
-        const rate = this.state.getDockSkillXpPerSecond();
-        this.dockSkillGenLevelEl.textContent = `Active — ★ ${rate}/s (${this.state.dronesOwned} drones)`;
-        genBtn.textContent = '✓ Active';
-        genBtn.classList.add('cannot-afford');
-      } else {
-        this.dockSkillGenLevelEl.textContent = 'Not installed';
-        this.dockSkillGenCostEl.textContent = this.state.prices['dock-skill-gen'].toLocaleString() + ' 🌸';
-        genBtn.classList.toggle('cannot-afford', !this.state.canAfford('dock-skill-gen'));
-      }
+    // Dock Skill Generator — always visible, greyed out if dock not owned
+    this.dockSkillGenItem.classList.remove('hidden');
+    const genBtn = document.getElementById('buy-dock-skill-gen');
+    if (this.state.dockSkillGen) {
+      const rate = this.state.getDockSkillXpPerSecond();
+      this.dockSkillGenLevelEl.textContent = `Active — ★ ${rate}/s (${this.state.dronesOwned} drones)`;
+      genBtn.textContent = '✓ Active';
+      genBtn.classList.add('cannot-afford');
+    } else if (!hasDock) {
+      this.dockSkillGenLevelEl.textContent = 'Requires Drone Dock';
+      this.dockSkillGenCostEl.textContent = this.state.prices['dock-skill-gen'].toLocaleString() + ' 🌸';
+      genBtn.classList.add('cannot-afford');
+    } else {
+      this.dockSkillGenLevelEl.textContent = 'Not installed';
+      this.dockSkillGenCostEl.textContent = this.state.prices['dock-skill-gen'].toLocaleString() + ' 🌸';
+      genBtn.classList.toggle('cannot-afford', !this.state.canAfford('dock-skill-gen'));
     }
 
     const spdLvl = this.state.droneSpeedLevel;
     const maxSpd = spdLvl >= UPG.propeller.maxLevel;
-    const spdVal = (R1.baseSpeed + spdLvl * UPG.propeller.speedPerLevel).toFixed(1);
-    this.globalSpeedLevelEl.textContent = maxSpd ? `${spdLvl}/${UPG.propeller.maxLevel} — MAX` : `${spdLvl}/${UPG.propeller.maxLevel} — ${spdVal} speed`;
-    this.globalSpeedCostEl.textContent = this.state.prices['drone-speed'] + ' 🌸';
+    const spdNow = (R1.baseSpeed + spdLvl * UPG.propeller.speedPerLevel).toFixed(1);
+    const spdNext = (R1.baseSpeed + (spdLvl + 1) * UPG.propeller.speedPerLevel).toFixed(1);
+    const spdPct = spdLvl > 0 ? Math.round(((spdNow / R1.baseSpeed) - 1) * 100) : 0;
+    const spdTier = UPG.propeller.tiers?.[spdLvl - 1] || '';
+    if (maxSpd) {
+      this.globalSpeedLevelEl.textContent = `${spdLvl}/${UPG.propeller.maxLevel} — MAX (${spdTier}) — ${spdNow} speed (+${spdPct}%)`;
+    } else if (spdLvl === 0) {
+      this.globalSpeedLevelEl.textContent = `0/${UPG.propeller.maxLevel} — ${spdNow} → ${spdNext} speed`;
+    } else {
+      this.globalSpeedLevelEl.textContent = `${spdLvl}/${UPG.propeller.maxLevel} (${spdTier}) — ${spdNow} → ${spdNext} speed (+${spdPct}%)`;
+    }
+    this.globalSpeedCostEl.textContent = this.state.prices['drone-speed'].toLocaleString() + ' 🌸';
     const spdBtn = document.getElementById('buy-global-speed');
     spdBtn.classList.toggle('cannot-afford', !this.state.canAfford('drone-speed') || maxSpd);
     if (maxSpd) spdBtn.textContent = 'MAX';
 
     const hvLvl = this.state.droneHarvestLevel;
-    const hvMax = UPG.harvester.maxLevel || 99;
-    const hvVal = Math.max(UPG.harvester.minHarvestTime, R1.baseHarvestTime - hvLvl * UPG.harvester.reductionPerLevel).toFixed(1);
-    const maxHv = hvLvl >= hvMax || parseFloat(hvVal) <= UPG.harvester.minHarvestTime;
-    this.globalHarvestLevelEl.textContent = maxHv ? `${hvLvl}/${hvMax} — MAX` : `${hvLvl}/${hvMax} — ${hvVal}s harvest`;
-    this.globalHarvestCostEl.textContent = this.state.prices['drone-harvest'] + ' 🌸';
+    const hvMax = UPG.harvester.maxLevel;
+    const hvNow = Math.max(UPG.harvester.minHarvestTime, R1.baseHarvestTime - hvLvl * UPG.harvester.reductionPerLevel).toFixed(1);
+    const hvNext = Math.max(UPG.harvester.minHarvestTime, R1.baseHarvestTime - (hvLvl + 1) * UPG.harvester.reductionPerLevel).toFixed(1);
+    const hvPct = hvLvl > 0 ? Math.round((1 - hvNow / R1.baseHarvestTime) * 100) : 0;
+    const hvTier = UPG.harvester.tiers?.[hvLvl - 1] || '';
+    const maxHv = hvLvl >= hvMax || parseFloat(hvNow) <= UPG.harvester.minHarvestTime;
+    if (maxHv) {
+      this.globalHarvestLevelEl.textContent = `${hvLvl}/${hvMax} — MAX (${hvTier}) — ${hvNow}s harvest (-${hvPct}%)`;
+    } else if (hvLvl === 0) {
+      this.globalHarvestLevelEl.textContent = `0/${hvMax} — ${hvNow}s → ${hvNext}s harvest`;
+    } else {
+      this.globalHarvestLevelEl.textContent = `${hvLvl}/${hvMax} (${hvTier}) — ${hvNow}s → ${hvNext}s harvest (-${hvPct}%)`;
+    }
+    this.globalHarvestCostEl.textContent = this.state.prices['drone-harvest'].toLocaleString() + ' 🌸';
     const hvBtn = document.getElementById('buy-global-harvest');
     hvBtn.classList.toggle('cannot-afford', !this.state.canAfford('drone-harvest') || maxHv);
     if (maxHv) hvBtn.textContent = 'MAX';
+
+    // S2 upgrades — visible only with s2Drone perk
+    const hasS2Perk = this.state.hasPerk('s2Drone');
+    const s2Divider = document.getElementById('s2-upgrades-divider');
+    const s2SpeedItem = document.getElementById('s2-speed-item');
+    const s2HarvestItem = document.getElementById('s2-harvest-item');
+    if (hasS2Perk) {
+      s2Divider.classList.remove('hidden');
+      s2SpeedItem.classList.remove('hidden');
+      s2HarvestItem.classList.remove('hidden');
+
+      const s2sLvl = this.state.s2SpeedLevel;
+      const s2sMax = s2sLvl >= S2UPG.propeller.maxLevel;
+      const s2BaseSpd = R1.baseSpeed * R1.s2Multiplier;
+      const s2sNow = (s2BaseSpd + s2sLvl * S2UPG.propeller.speedPerLevel).toFixed(1);
+      const s2sNext = (s2BaseSpd + (s2sLvl + 1) * S2UPG.propeller.speedPerLevel).toFixed(1);
+      const s2sPct = s2sLvl > 0 ? Math.round(((s2sNow / s2BaseSpd) - 1) * 100) : 0;
+      const s2sTier = S2UPG.propeller.tiers?.[s2sLvl - 1] || '';
+      const s2SpeedLevelEl = document.getElementById('s2-speed-level');
+      if (s2sMax) {
+        s2SpeedLevelEl.textContent = `${s2sLvl}/${S2UPG.propeller.maxLevel} — MAX (${s2sTier}) — ${s2sNow} speed (+${s2sPct}%)`;
+      } else if (s2sLvl === 0) {
+        s2SpeedLevelEl.textContent = `0/${S2UPG.propeller.maxLevel} — ${s2sNow} → ${s2sNext} speed`;
+      } else {
+        s2SpeedLevelEl.textContent = `${s2sLvl}/${S2UPG.propeller.maxLevel} (${s2sTier}) — ${s2sNow} → ${s2sNext} speed (+${s2sPct}%)`;
+      }
+      const s2SpeedCostEl = document.getElementById('s2-speed-cost');
+      s2SpeedCostEl.textContent = this.state.prices['s2-speed'].toLocaleString() + ' 🌸';
+      const s2SpdBtn = document.getElementById('buy-s2-speed');
+      s2SpdBtn.classList.toggle('cannot-afford', !this.state.canAfford('s2-speed') || s2sMax);
+      if (s2sMax) s2SpdBtn.textContent = 'MAX';
+
+      const s2hLvl = this.state.s2HarvestLevel;
+      const s2hMaxLvl = S2UPG.harvester.maxLevel;
+      const s2BaseHt = R1.baseHarvestTime / R1.s2Multiplier;
+      const s2hNow = Math.max(S2UPG.harvester.minHarvestTime, s2BaseHt - s2hLvl * S2UPG.harvester.reductionPerLevel).toFixed(1);
+      const s2hNext = Math.max(S2UPG.harvester.minHarvestTime, s2BaseHt - (s2hLvl + 1) * S2UPG.harvester.reductionPerLevel).toFixed(1);
+      const s2hPct = s2hLvl > 0 ? Math.round((1 - s2hNow / s2BaseHt) * 100) : 0;
+      const s2hTier = S2UPG.harvester.tiers?.[s2hLvl - 1] || '';
+      const maxS2h = s2hLvl >= s2hMaxLvl || parseFloat(s2hNow) <= S2UPG.harvester.minHarvestTime;
+      const s2HarvestLevelEl = document.getElementById('s2-harvest-level');
+      if (maxS2h) {
+        s2HarvestLevelEl.textContent = `${s2hLvl}/${s2hMaxLvl} — MAX (${s2hTier}) — ${s2hNow}s harvest (-${s2hPct}%)`;
+      } else if (s2hLvl === 0) {
+        s2HarvestLevelEl.textContent = `0/${s2hMaxLvl} — ${s2hNow}s → ${s2hNext}s harvest`;
+      } else {
+        s2HarvestLevelEl.textContent = `${s2hLvl}/${s2hMaxLvl} (${s2hTier}) — ${s2hNow}s → ${s2hNext}s harvest (-${s2hPct}%)`;
+      }
+      const s2HarvestCostEl = document.getElementById('s2-harvest-cost');
+      s2HarvestCostEl.textContent = this.state.prices['s2-harvest'].toLocaleString() + ' 🌸';
+      const s2HvBtn = document.getElementById('buy-s2-harvest');
+      s2HvBtn.classList.toggle('cannot-afford', !this.state.canAfford('s2-harvest') || maxS2h);
+      if (maxS2h) s2HvBtn.textContent = 'MAX';
+    } else {
+      s2Divider.classList.add('hidden');
+      s2SpeedItem.classList.add('hidden');
+      s2HarvestItem.classList.add('hidden');
+    }
 
     // Spawn speed upgrade
     const interval = this.state.getSpawnInterval();
@@ -449,7 +817,7 @@ export class UI {
     this.spawnLevelEl.textContent = maxSpawn
       ? `${this.state.spawnSpeedLevel}/${spawnMax} — MAX`
       : `${this.state.spawnSpeedLevel}/${spawnMax} — ${interval.toFixed(1)}s interval`;
-    this.spawnCostEl.textContent = this.state.prices['spawn-speed'] + ' 🌸';
+    this.spawnCostEl.textContent = this.state.prices['spawn-speed'].toLocaleString() + ' 🌸';
     const spawnBtn = document.getElementById('buy-spawn-speed');
     spawnBtn.classList.toggle('cannot-afford', !this.state.canAfford('spawn-speed') || maxSpawn);
     if (maxSpawn) spawnBtn.textContent = 'MAX';
@@ -467,7 +835,7 @@ export class UI {
     } else {
       this.batchLevelEl.textContent = `${batchLvl}/${batchMax} — avg ~${batchExpected} per cycle`;
     }
-    this.batchCostEl.textContent = this.state.prices['spawn-batch'] + ' 🌸';
+    this.batchCostEl.textContent = this.state.prices['spawn-batch'].toLocaleString() + ' 🌸';
     const batchBtn = document.getElementById('buy-spawn-batch');
     batchBtn.classList.toggle('cannot-afford', !this.state.canAfford('spawn-batch') || maxBatch);
     if (maxBatch) batchBtn.textContent = 'MAX';
@@ -479,7 +847,7 @@ export class UI {
     this.valueLevelEl.textContent = maxValue
       ? `${this.state.flowerValueLevel}/${valueMax} — MAX`
       : `${this.state.flowerValueLevel}/${valueMax} — ${flowerVal} per flower`;
-    this.valueCostEl.textContent = this.state.prices['flower-value'] + ' 🌸';
+    this.valueCostEl.textContent = this.state.prices['flower-value'].toLocaleString() + ' 🌸';
     const valueBtn = document.getElementById('buy-flower-value');
     valueBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-value') || maxValue);
     if (maxValue) valueBtn.textContent = 'MAX';
@@ -491,7 +859,7 @@ export class UI {
     this.multiLevelEl.textContent = maxMulti
       ? `${this.state.flowerMultiplierLevel}/${multiMax} — MAX`
       : `${this.state.flowerMultiplierLevel}/${multiMax} — ${flowerMul}x`;
-    this.multiCostEl.textContent = this.state.prices['flower-multi'] + ' 🌸';
+    this.multiCostEl.textContent = this.state.prices['flower-multi'].toLocaleString() + ' 🌸';
     const multiBtn = document.getElementById('buy-flower-multi');
     multiBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-multi') || maxMulti);
     if (maxMulti) multiBtn.textContent = 'MAX';
@@ -504,7 +872,7 @@ export class UI {
     this.megaLevelEl.textContent = maxMega
       ? `${this.state.megaFlowerLevel}/${megaMax} — MAX (${chance}%, ${megaVal}x)`
       : `${this.state.megaFlowerLevel}/${megaMax} — ${chance}% chance (${megaVal}x value)`;
-    this.megaCostEl.textContent = this.state.prices['mega-flower'] + ' 🌸';
+    this.megaCostEl.textContent = this.state.prices['mega-flower'].toLocaleString() + ' 🌸';
     const megaBtn = document.getElementById('buy-mega-flower');
     megaBtn.classList.toggle('cannot-afford', !this.state.canAfford('mega-flower') || maxMega);
     if (maxMega) megaBtn.textContent = 'MAX';
@@ -569,17 +937,24 @@ export class UI {
       this.badgeMushroomVal.textContent = this.state.mushroomLevel;
       this.badgeMushroomTip.textContent = `Mushrooms ${this.state.mushroomLevel}/${shroomMax} — ${shroomChance}% chance`;
     }
-    if (this.state.dronesOwned > 0) {
+    const totalDrones = this.state.dronesOwned + this.state.s2DronesOwned;
+    if (totalDrones > 0) {
       this.badgeDrones.classList.remove('hidden');
-      this.badgeDronesVal.textContent = this.state.dronesOwned;
+      this.badgeDronesVal.textContent = totalDrones;
       const ultCount = this.droneManager.getDrones().filter((d) => d.isUltimate).length;
-      this.badgeDronesTip.textContent = `${this.state.dronesOwned} drone${this.state.dronesOwned > 1 ? 's' : ''}${ultCount > 0 ? `, ${ultCount} ultimate` : ''}`;
+      let tip = `${this.state.dronesOwned} R1`;
+      if (this.state.s2DronesOwned > 0) tip += `, ${this.state.s2DronesOwned} S2`;
+      if (ultCount > 0) tip += `, ${ultCount} ultimate`;
+      this.badgeDronesTip.textContent = tip;
     }
 
     if (this.selectedDroneIdx >= 0) {
+      const drones = this.droneManager.getDrones();
+      const selDrone = drones[this.selectedDroneIdx];
+      const ultPriceKey = selDrone?.isS2 ? 's2-ultimate' : 'r1-ultimate';
       const ultBtn = this.dronePopupUpgrades.querySelector('.popup-buy-ultimate');
       if (ultBtn) {
-        ultBtn.classList.toggle('cannot-afford', !this.state.canAfford('r1-ultimate'));
+        ultBtn.classList.toggle('cannot-afford', !this.state.canAfford(ultPriceKey));
       }
     }
 
@@ -592,6 +967,17 @@ export class UI {
     const max = barMax.toLocaleString();
     this.skillBarLabelEl.textContent = cur + ' / ' + max;
     this.convertBtn.classList.toggle('no-flowers', this.state.flowers < 1);
+
+    // Skill tree
+    this.skillMenuBalance.textContent = this.state.skillPoints + ' SP';
+    for (const [id, perk] of Object.entries(this.state.skillPerks)) {
+      const el = document.querySelector(`.skill-node[data-skill="${id}"]`);
+      if (!el) continue;
+      const unlocked = this.state.isPerkUnlocked(id);
+      el.classList.toggle('owned', perk.owned);
+      el.classList.toggle('locked', !perk.owned && !unlocked);
+      el.classList.toggle('cant-afford', !perk.owned && unlocked && this.state.skillPoints < perk.cost);
+    }
   }
 
   update(dt) {

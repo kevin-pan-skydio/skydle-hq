@@ -1,14 +1,7 @@
 import * as THREE from 'three';
+import CONFIG from '../config.json';
 
-const INITIAL_DELAY = 300; // 5 minutes before first CEO event
-const SPAWN_INTERVAL = 120;
-const ACTIVE_DURATION = 20;
-const WALK_SPEED = 3.0;
-const SLOWDOWN = 0.5;
-const PAUSE_MIN = 1.5;
-const PAUSE_MAX = 3.5;
-const WALK_MIN = 2.5;
-const WALK_MAX = 5.0;
+const RC = CONFIG.rivalCEO;
 
 function buildCEOModel() {
   const group = new THREE.Group();
@@ -95,12 +88,12 @@ export class RivalCEO {
 
     // Phase: 'initial' (waiting 5 min), 'idle' (between events), 'active' (on field)
     this._phase = this._devMode ? 'initial' : 'initial';
-    this._phaseTimer = this._devMode ? 10 : INITIAL_DELAY;
+    this._phaseTimer = this._devMode ? 10 : RC.initialDelay;
     this.activeTimer = 0;
 
     // Walk/pause state machine
     this._moving = true;
-    this._stateTimer = randRange(WALK_MIN, WALK_MAX);
+    this._stateTimer = randRange(RC.walkMin, RC.walkMax);
     this.walkTime = 0;
 
     this._pathIdx = 0;
@@ -129,7 +122,7 @@ export class RivalCEO {
   }
 
   get slowdownMultiplier() {
-    return this.active ? SLOWDOWN : 1;
+    return this.active ? RC.slowdown : 1;
   }
 
   update(dt) {
@@ -184,10 +177,10 @@ export class RivalCEO {
   _spawn() {
     this.active = true;
     this._phase = 'active';
-    this.activeTimer = ACTIVE_DURATION;
+    this.activeTimer = RC.activeDuration;
     this.walkTime = 0;
     this._moving = true;
-    this._stateTimer = randRange(WALK_MIN, WALK_MAX);
+    this._stateTimer = randRange(RC.walkMin, RC.walkMax);
 
     const startCorner = Math.floor(Math.random() * 4);
     this._pathIdx = startCorner;
@@ -203,15 +196,80 @@ export class RivalCEO {
     this.scene.add(this.mesh);
 
     if (this._modalEl) this._modalEl.classList.add('visible');
+    this._desaturateWorld();
   }
 
   _despawn() {
     this.active = false;
     this._phase = 'idle';
-    this._phaseTimer = this._devMode ? 10 : SPAWN_INTERVAL;
+    this._phaseTimer = this._devMode ? 10 : RC.spawnInterval;
 
     if (this.mesh) this.scene.remove(this.mesh);
     if (this._modalEl) this._modalEl.classList.remove('visible');
+    this._restoreWorld();
+  }
+
+  reset() {
+    if (this.active) this._despawn();
+    this._phase = 'initial';
+    this._phaseTimer = this._devMode ? 10 : RC.initialDelay;
+  }
+
+  _desaturateWorld() {
+    this._savedBg = this.scene.background.getHex();
+    this.scene.background.setHex(0x3a3a3a);
+
+    if (this.world.board) {
+      this._savedBoardColor = this.world.board.material.color.getHex();
+      this.world.board.material.color.setHex(0x8a8a8a);
+    }
+
+    this._savedDockColors = [];
+    for (const tile of this.world.dockTiles) {
+      this._savedDockColors.push({
+        tile,
+        baseColor: tile.userData.baseColor,
+        matColor: tile.material.color.getHex(),
+      });
+      const grey = tile.userData.occupied ? 0x999990 : 0x7a7a80;
+      tile.material.color.setHex(grey);
+      tile.userData.baseColor = grey;
+    }
+
+    this._savedLights = [];
+    this.scene.traverse((obj) => {
+      if (obj.isLight) {
+        this._savedLights.push({ light: obj, color: obj.color.getHex(), intensity: obj.intensity });
+        obj.color.setHex(0x999999);
+        obj.intensity *= 0.7;
+      }
+    });
+  }
+
+  _restoreWorld() {
+    if (this._savedBg !== undefined) {
+      this.scene.background.setHex(this._savedBg);
+    }
+
+    if (this.world.board && this._savedBoardColor !== undefined) {
+      this.world.board.material.color.setHex(this._savedBoardColor);
+    }
+
+    if (this._savedDockColors) {
+      for (const { tile, baseColor, matColor } of this._savedDockColors) {
+        tile.material.color.setHex(matColor);
+        tile.userData.baseColor = baseColor;
+      }
+      this._savedDockColors = null;
+    }
+
+    if (this._savedLights) {
+      for (const { light, color, intensity } of this._savedLights) {
+        light.color.setHex(color);
+        light.intensity = intensity;
+      }
+      this._savedLights = null;
+    }
   }
 
   _updateMovement(dt) {
@@ -221,8 +279,8 @@ export class RivalCEO {
       // Toggle between walking and pausing
       this._moving = !this._moving;
       this._stateTimer = this._moving
-        ? randRange(WALK_MIN, WALK_MAX)
-        : randRange(PAUSE_MIN, PAUSE_MAX);
+        ? randRange(RC.walkMin, RC.walkMax)
+        : randRange(RC.pauseMin, RC.pauseMax);
     }
 
     const { leftLeg, rightLeg, leftArm, rightArm } = this.mesh.userData;
@@ -238,7 +296,7 @@ export class RivalCEO {
       const dz = to.z - from.z;
       const segLen = Math.sqrt(dx * dx + dz * dz);
 
-      this._pathT += (WALK_SPEED * dt) / segLen;
+      this._pathT += (RC.walkSpeed * dt) / segLen;
 
       if (this._pathT >= 1) {
         this._pathT -= 1;

@@ -11,6 +11,29 @@
 <body>
   <canvas id="game-canvas"></canvas>
 
+  <div id="welcome-modal">
+    <div id="welcome-box">
+      <div id="welcome-title">Welcome to Skydle HQ</div>
+      <div id="welcome-body">
+        You have <strong>1 🌸</strong> — just enough to buy your first drone.<br><br>
+        Drones automatically harvest flowers from the field.<br>
+        Use flowers to buy upgrades and grow your fleet.
+      </div>
+      <button id="welcome-go">🔴 Buy Your First Drone</button>
+      <button id="welcome-load">📂 Load Save</button>
+      <input type="file" id="load-file-input" accept=".skydle" style="display:none">
+    </div>
+  </div>
+
+  <div id="game-menu-wrap">
+    <button id="game-menu-btn">☰</button>
+    <div id="game-menu" class="hidden">
+      <button id="btn-save">💾 Save Game</button>
+      <button id="btn-load">📂 Load Game</button>
+      <input type="file" id="load-file-game" accept=".skydle" style="display:none">
+    </div>
+  </div>
+
   <div id="fps-counter">0 FPS</div>
 
   <div id="hud">
@@ -45,17 +68,52 @@
     </div>
     <div id="skill-bar-wrap">
       <div id="skill-bar-fill"></div>
-      <span id="skill-bar-label">0 / 1,000,000</span>
+      <span id="skill-bar-label"></span>
     </div>
     <button id="convert-flowers-btn">
       🌸 → ★ Convert All
     </button>
   </div>
 
+  <div id="skill-overlay" class="hidden">
+    <div id="skill-tree-modal">
+      <div id="skill-tree-header">
+        <span id="skill-menu-title">★ Skill Tree</span>
+        <span id="skill-menu-balance">0 SP</span>
+        <button id="skill-menu-close">✕</button>
+      </div>
+      <div id="skill-tree-body">
+        <svg id="skill-tree-lines" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="skill-tree-nodes"></div>
+      </div>
+    </div>
+
+    <div id="skill-confirm" class="hidden">
+      <div id="skill-confirm-box">
+        <div id="skill-confirm-title">Unlock <span id="skill-confirm-name"></span>?</div>
+        <div id="skill-confirm-desc"></div>
+        <div id="skill-confirm-warning">
+          ⚠️ This will <strong>reset all progress</strong>:<br>
+          Flowers, drones, upgrades — everything goes back to zero.<br>
+          You keep your <strong>remaining skill points</strong> and <strong>unlocked perks</strong>.
+        </div>
+        <div id="skill-confirm-cost">Cost: <span id="skill-confirm-cost-val"></span></div>
+        <div id="skill-confirm-buttons">
+          <button id="skill-confirm-yes">Unlock & Reset</button>
+          <button id="skill-confirm-no">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="bottom-buttons">
     <div id="buy-r1-btn">
       🔴 Buy R1
       <span class="btn-sub" id="r1-cost">12 🌸</span>
+    </div>
+    <div id="buy-s2-btn" class="hidden">
+      🔵 Buy S2
+      <span class="btn-sub" id="s2-cost">500 🌸</span>
     </div>
     <div id="shop-toggle">⬆ Upgrades</div>
   </div>
@@ -111,7 +169,7 @@
             <span class="cost" id="global-dock-cost">1000 🌸</span>
           </button>
         </div>
-        <div class="shop-item dock-skill-gen hidden" id="dock-skill-gen-item">
+        <div class="shop-item dock-skill-gen" id="dock-skill-gen-item">
           <div class="item-icon skill-gen-icon">★</div>
           <div class="item-info">
             <div class="item-name skill-gen-name">Mega Dock</div>
@@ -120,6 +178,31 @@
           </div>
           <button class="buy-btn" id="buy-dock-skill-gen">
             <span class="cost" id="dock-skill-gen-cost">500,000 🌸</span>
+          </button>
+        </div>
+
+        <div class="shop-divider hidden" id="s2-upgrades-divider">── S2 Upgrades ──</div>
+
+        <div class="shop-item hidden" id="s2-speed-item">
+          <div class="item-icon">💨</div>
+          <div class="item-info">
+            <div class="item-name">S2 Propeller+</div>
+            <div class="item-desc">Increases flight speed for all S2s</div>
+            <div class="item-owned" id="s2-speed-level">0/25</div>
+          </div>
+          <button class="buy-btn" id="buy-s2-speed">
+            <span class="cost" id="s2-speed-cost">200 🌸</span>
+          </button>
+        </div>
+        <div class="shop-item hidden" id="s2-harvest-item">
+          <div class="item-icon">⚙️</div>
+          <div class="item-info">
+            <div class="item-name">S2 Harvester+</div>
+            <div class="item-desc">Faster harvest for all S2s</div>
+            <div class="item-owned" id="s2-harvest-level">Level 0</div>
+          </div>
+          <button class="buy-btn" id="buy-s2-harvest">
+            <span class="cost" id="s2-harvest-cost">300 🌸</span>
           </button>
         </div>
       </div>
@@ -187,7 +270,7 @@
           <div class="item-icon mushroom-icon">🍄</div>
           <div class="item-info">
             <div class="item-name mushroom-name">Psychedelic Mushrooms</div>
-            <div class="item-desc">Chance for mushrooms — gives flowers <em>and</em> ★ skill XP</div>
+            <div class="item-desc">Chance for mushrooms — gives ★ skill XP only</div>
             <div class="item-owned" id="mushroom-level">0/5 — 0% chance</div>
           </div>
           <button class="buy-btn" id="buy-mushroom">
@@ -262,7 +345,7 @@
     <div id="rival-modal-icon">🎤</div>
     <div id="rival-modal-text">
       <div id="rival-modal-title">A rival CEO is giving a keynote!</div>
-      <div id="rival-modal-sub">All operations slowed by 50%</div>
+      <div id="rival-modal-sub">All operations slowed by 75% · Manual harvest disabled</div>
     </div>
   </div>
 

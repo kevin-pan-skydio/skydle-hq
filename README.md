@@ -52,6 +52,38 @@ src/
 
 All game mechanics are driven by `src/config.json`. Tweak drone speed, harvest time, prices, spawn rates, and upgrade scaling without touching code.
 
+## Skill Point Progression
+
+Skill points are earned by filling a skill XP bar. The bar cost grows exponentially (configured via `skillPoints.barSize` and `skillPoints.barScale` in `config.json`):
+
+| Skill Point | XP Required |
+|-------------|-------------|
+| 1st         | 1,000,000   |
+| 2nd         | 1,600,000   |
+| 3rd         | 2,560,000   |
+| 4th         | 4,096,000   |
+| 5th         | 6,553,600   |
+| 6th         | 10,485,760  |
+
+Each subsequent skill point costs 1.6x more than the last. Sources of skill XP:
+
+- **Convert flowers** — 1 flower = 1 skill XP (manual, costs flowers)
+- **Mega Dock** — passive generation, 10 XP/s per drone (requires Drone Dock)
+- **Mushrooms** — 500 XP per mushroom collected (skill XP only, no flowers)
+
+## Rival CEO
+
+A rival CEO periodically enters the field, disrupting operations:
+
+- **First appearance**: 8 minutes into the game
+- **Respawn interval**: every 4 minutes after despawning
+- **Active duration**: 45 seconds on the field
+- **Slowdown**: all drone operations run at 25% speed (75% slower)
+- **Manual harvest disabled**: players cannot click to collect flowers
+- **Visual effect**: board and lighting desaturate to dull grey
+
+All timing values are configurable in `config.json` under `rivalCEO`.
+
 ## Ideas
 
 ### Map

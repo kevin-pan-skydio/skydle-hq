@@ -39,6 +39,7 @@ export class World {
     board.position.set(0, -TILE_HEIGHT / 2, 0);
     board.receiveShadow = true;
     this.scene.add(board);
+    this.board = board;
 
     this.buildDockTiles(offset);
   }
@@ -122,5 +123,16 @@ export class World {
 
   getAllDockTiles() {
     return this.dockTiles;
+  }
+
+  resetDocks() {
+    for (const tile of this.dockTiles) {
+      tile.userData.occupied = false;
+      const { dockRow: row, dockCol: col } = tile.userData;
+      const isDark = (row + col) % 2 === 0;
+      const color = isDark ? COLORS.dock : COLORS.dockAlt;
+      tile.material.color.setHex(color);
+      tile.userData.baseColor = color;
+    }
   }
 }

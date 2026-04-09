@@ -53,33 +53,37 @@ step = floor((maxPrice − currentPrice) / (remainingLevels + 1))
 
 ## Raw Prices — All Upgrades
 
-### Flower Value (25 levels, base 5)
+### Flower Value (25 levels, exponential ~×1.6)
 
 | Level | Cost | Level | Cost | Level | Cost |
 |-------|------|-------|------|-------|------|
-| 1 | 5 | 10 | 712 | 19 | 498,648 |
-| 2 | 7 | 11 | 1,406 | 20 | 615,540 |
-| 3 | 11 | 12 | 2,799 | 21 | 732,432 |
-| 4 | 18 | 13 | 5,595 | 22 | 849,324 |
-| 5 | 31 | 14 | 11,181 | 23 | 966,216 |
-| 6 | 55 | 15 | 22,203 | 24 | 1,083,108 |
-| 7 | 101 | 16 | 43,536 | 25 | ~1,200,000 |
-| 8 | 190 | 17 | 83,757 | | |
-| 9 | 365 | 18 | 157,083 | | |
+| 1 | 14 | 10 | 1,000 | 19 | 70,000 |
+| 2 | 23 | 11 | 1,600 | 20 | 115,000 |
+| 3 | 37 | 12 | 2,550 | 21 | 180,000 |
+| 4 | 60 | 13 | 4,150 | 22 | 290,000 |
+| 5 | 95 | 14 | 6,500 | 23 | 465,000 |
+| 6 | 150 | 15 | 10,500 | 24 | 750,000 |
+| 7 | 240 | 16 | 17,000 | 25 | 1,200,000 |
+| 8 | 390 | 17 | 27,500 | | |
+| 9 | 600 | 18 | 44,000 | | |
 
-### Multiplier (25 levels, base 8)
+Total cost to max: ~3.19M flowers
+
+### Multiplier (25 levels, ⌈1.5× value cost⌉)
 
 | Level | Cost | Level | Cost | Level | Cost |
 |-------|------|-------|------|-------|------|
-| 1 | 8 | 10 | 1,233 | 19 | 595,035 |
-| 2 | 12 | 11 | 2,435 | 20 | 695,862 |
-| 3 | 19 | 12 | 4,848 | 21 | 796,689 |
-| 4 | 31 | 13 | 9,691 | 22 | 897,516 |
-| 5 | 53 | 14 | 19,366 | 23 | 998,344 |
-| 6 | 95 | 15 | 38,457 | 24 | 1,099,172 |
-| 7 | 175 | 16 | 75,408 | 25 | ~1,200,000 |
-| 8 | 329 | 17 | 145,074 | | |
-| 9 | 632 | 18 | 272,080 | | |
+| 1 | 21 | 10 | 1,500 | 19 | 105,000 |
+| 2 | 35 | 11 | 2,400 | 20 | 172,500 |
+| 3 | 56 | 12 | 3,825 | 21 | 270,000 |
+| 4 | 90 | 13 | 6,225 | 22 | 435,000 |
+| 5 | 143 | 14 | 9,750 | 23 | 697,500 |
+| 6 | 225 | 15 | 15,750 | 24 | 1,125,000 |
+| 7 | 360 | 16 | 25,500 | 25 | 1,800,000 |
+| 8 | 585 | 17 | 41,250 | | |
+| 9 | 900 | 18 | 66,000 | | |
+
+Each level costs exactly ⌈1.5×⌉ the corresponding Flower Value level.
 
 ### Faster Spawns (25 levels, base 15)
 
@@ -145,28 +149,41 @@ Drone pricing uses three phases to match diminishing returns of additional drone
 | 14 | 3,809 | +200 |
 | 15 | 4,009 | +200 |
 
-### Propeller+ (5 levels, ×2.0 flat scale)
+### Propeller+ (25 levels, exponential ~×1.57, cap 1.2M)
 
-| Level | Cost |
-|-------|------|
-| 1 | 25 |
-| 2 | 50 |
-| 3 | 100 |
-| 4 | 200 |
-| 5 | 400 |
+Speed per level: +0.24 (base 2.1 → max 8.1)
 
-### Harvester+ (8 levels, ×2.0 flat scale)
+| Level | Cost | Tier | Level | Cost | Tier | Level | Cost | Tier |
+|-------|------|------|-------|------|------|-------|------|------|
+| 1 | 25 | Bronze | 10 | 1,400 | Silver | 19 | 80,000 | Diamond |
+| 2 | 39 | Bronze | 11 | 2,250 | Gold | 20 | 125,000 | Diamond |
+| 3 | 60 | Bronze | 12 | 3,500 | Gold | 21 | 200,000 | Ultimate |
+| 4 | 95 | Bronze | 13 | 5,500 | Gold | 22 | 310,000 | Ultimate |
+| 5 | 150 | Bronze | 14 | 8,500 | Gold | 23 | 490,000 | Ultimate |
+| 6 | 235 | Silver | 15 | 13,500 | Gold | 24 | 750,000 | Ultimate |
+| 7 | 370 | Silver | 16 | 21,000 | Diamond | 25 | 1,200,000 | Ultimate |
+| 8 | 600 | Silver | 17 | 33,000 | Diamond | | | |
+| 9 | 900 | Silver | 18 | 50,000 | Diamond | | | |
 
-| Level | Cost |
-|-------|------|
-| 1 | 30 |
-| 2 | 60 |
-| 3 | 120 |
-| 4 | 240 |
-| 5 | 480 |
-| 6 | 960 |
-| 7 | 1,920 |
-| 8 | 3,840 |
+Total cost to max: ~2.57M flowers
+
+### Harvester+ (25 levels, exponential ~×1.48, cap 1.2M)
+
+Harvest time reduction per level: −0.15s (base 4.3s → min 0.5s)
+
+| Level | Cost | Tier | Level | Cost | Tier | Level | Cost | Tier |
+|-------|------|------|-------|------|------|-------|------|------|
+| 1 | 100 | Bronze | 10 | 3,400 | Silver | 19 | 115,000 | Diamond |
+| 2 | 150 | Bronze | 11 | 5,000 | Gold | 20 | 170,000 | Diamond |
+| 3 | 220 | Bronze | 12 | 7,500 | Gold | 21 | 250,000 | Ultimate |
+| 4 | 325 | Bronze | 13 | 11,000 | Gold | 22 | 370,000 | Ultimate |
+| 5 | 480 | Bronze | 14 | 16,000 | Gold | 23 | 550,000 | Ultimate |
+| 6 | 700 | Silver | 15 | 24,000 | Gold | 24 | 800,000 | Ultimate |
+| 7 | 1,050 | Silver | 16 | 35,500 | Diamond | 25 | 1,200,000 | Ultimate |
+| 8 | 1,550 | Silver | 17 | 50,000 | Diamond | | | |
+| 9 | 2,300 | Silver | 18 | 80,000 | Diamond | | | |
+
+Total cost to max: ~3.82M flowers
 
 ### Drone Dock (one-time)
 
@@ -217,25 +234,26 @@ Levels 3–25: guaranteed minimum of 3, then each of 12 extra slots (up to 15 to
 
 | Upgrade | Max Level | Effect | Base Cost | Scale |
 |---------|-----------|--------|-----------|-------|
-| Flower Value | 25 | Base value 1 → 100 per flower (power curve `t^1.5`) | 5 | S-curve [1.5, 2.0, 1.2] cap 1.2M |
-| Multiplier | 25 | Income multiplier 1× → 5× | 8 | S-curve [1.5, 2.0, 1.2] cap 1.2M |
+| Flower Value | 25 | Base value 1 → 100 per flower (power curve `t^1.5`) | 14 | Exponential ×1.6 cap 1.2M |
+| Multiplier | 25 | Income multiplier 1.1× → 8× | 21 | ⌈1.5×⌉ of value cost, cap 1.8M |
 | Faster Spawns | 25 | Spawn interval 3.5s → 0.8s | 15 | S-curve [1.5, 2.0, 1.2] cap 1.2M |
 | Batch Spawns | 25 | Flowers per cycle 1 → up to 15 (probabilistic) | 12 | S-curve [1.5, 2.0, 1.2] cap 1.2M |
+| Flower Capacity | 5 | +18 max flowers on map per level (+90 total) | 1M | Explicit tiers |
 | Mega Flowers | 5 | Mega chance 0% → 50% (each mega = 5× value) | 120 | Explicit tiers |
 
 ### Drone Upgrades (Upgrades → Drones tab)
 
 | Upgrade | Max Level | Effect | Base Cost | Scale |
 |---------|-----------|--------|-----------|-------|
-| Propeller+ | 5 | Flight speed +1.5/level (all R1s) | 25 | ×2.0 flat |
-| Harvester+ | 8 | Harvest time −0.5s/level, min 0.5s (all R1s) | 30 | ×2.0 flat |
+| Propeller+ | 25 | Flight speed +0.24/level, 2.1 → 8.1 (all R1s) | 25 | Exponential ×1.57 cap 1.2M |
+| Harvester+ | 25 | Harvest time −0.15s/level, 4.3s → 0.5s (all R1s) | 100 | Exponential ×1.48 cap 1.2M |
 | Drone Dock | 1 | Cooldown → 1s for all R1s | 50,000 | — |
 
 ### Per-Drone Upgrades (click drone's dock tile)
 
 | Upgrade | Cost | Effect |
 |---------|------|--------|
-| Ultimate R1 | 10,000 | 3× all stats + rainbow holo visual |
+| Ultimate R1 | 50,000 | +50% speed, 5 flowers per run + rainbow holo visual |
 
 ### Drones
 

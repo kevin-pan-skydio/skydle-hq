@@ -1,0 +1,65 @@
+{
+  "nodes": {
+    "manualHarvest": {
+      "cost": 1,
+      "requires": null,
+      "icon": "💪",
+      "label": "Manual Harvest",
+      "desc": "Click flowers to collect them",
+      "tier": 1,
+      "position": "center"
+    },
+    "bloomBoost": {
+      "cost": 1,
+      "requires": "manualHarvest",
+      "icon": "🌺",
+      "label": "Bloom Boost",
+      "desc": "Flowers start at 5 value (base for all value upgrades)",
+      "tier": 2,
+      "position": "left"
+    },
+    "freeDrones": {
+      "cost": 1,
+      "requires": "manualHarvest",
+      "icon": "🤖",
+      "label": "Free Drones",
+      "desc": "Start with 2 free R1s at the top and bottom of the grid",
+      "tier": 2,
+      "position": "center"
+    },
+    "beehive": {
+      "cost": 1,
+      "requires": "manualHarvest",
+      "icon": "🐝",
+      "label": "Beehive",
+      "desc": "A beehive spawns every 30s — flowers near it yield 2× value",
+      "tier": 2,
+      "position": "right"
+    },
+    "fullBloom": {
+      "cost": 1,
+      "requires": "bloomBoost",
+      "icon": "🌻",
+      "label": "Full Bloom",
+      "desc": "Start with the field filled to max with flowers",
+      "tier": 3,
+      "position": "left"
+    },
+    "s2Drone": {
+      "cost": 2,
+      "requires": "freeDrones",
+      "icon": "🛩️",
+      "label": "Skydio S2",
+      "desc": "Unlock the S2 drone — 2× base speed and harvest of the R1",
+      "tier": 3,
+      "position": "center"
+    }
+  },
+  "branches": [
+    ["manualHarvest", "bloomBoost"],
+    ["manualHarvest", "freeDrones"],
+    ["manualHarvest", "beehive"],
+    ["bloomBoost", "fullBloom"],
+    ["freeDrones", "s2Drone"]
+  ]
+}

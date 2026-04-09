@@ -99,68 +99,9 @@ function buildFlowerTemplate(petalColorHex, isMega) {
   return mergeGeometries(parts);
 }
 
-function createCollectMesh(petalColorHex, isMega) {
-  const group = new THREE.Group();
-
-  if (isMega) {
-    const stem = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 0.9, 0.18),
-      new THREE.MeshLambertMaterial({ color: 0x2e7d32 })
-    );
-    stem.position.y = 0.45;
-    group.add(stem);
-
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const petal = new THREE.Mesh(
-        new THREE.BoxGeometry(0.32, 0.14, 0.32),
-        new THREE.MeshLambertMaterial({ color: petalColorHex })
-      );
-      petal.position.set(Math.cos(angle) * 0.34, 0.96, Math.sin(angle) * 0.34);
-      group.add(petal);
-    }
-
-    const center = new THREE.Mesh(
-      new THREE.BoxGeometry(0.28, 0.28, 0.28),
-      new THREE.MeshLambertMaterial({ color: 0xffd700 })
-    );
-    center.position.y = 1.04;
-    group.add(center);
-
-    const crown = new THREE.Mesh(
-      new THREE.BoxGeometry(0.14, 0.2, 0.14),
-      new THREE.MeshLambertMaterial({ color: 0xffea00 })
-    );
-    crown.position.y = 1.28;
-    group.add(crown);
-  } else {
-    const stem = new THREE.Mesh(
-      new THREE.BoxGeometry(0.1, 0.5, 0.1),
-      new THREE.MeshLambertMaterial({ color: 0x43a047 })
-    );
-    stem.position.y = 0.25;
-    group.add(stem);
-
-    for (let i = 0; i < 5; i++) {
-      const angle = (i / 5) * Math.PI * 2;
-      const petal = new THREE.Mesh(
-        new THREE.BoxGeometry(0.24, 0.14, 0.24),
-        new THREE.MeshLambertMaterial({ color: petalColorHex })
-      );
-      petal.position.set(Math.cos(angle) * 0.19, 0.6, Math.sin(angle) * 0.19);
-      group.add(petal);
-    }
-
-    const center = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 0.18, 0.18),
-      new THREE.MeshLambertMaterial({ color: 0xffee58 })
-    );
-    center.position.y = 0.62;
-    group.add(center);
-  }
-
-  return group;
-}
+const COLLECT_POOL_SIZE = 24;
+const _collectGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+const _collectMat = new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true });
 
 function buildMushroomTemplate() {
   const s = 1.6;
@@ -205,41 +146,6 @@ function buildMushroomTemplate() {
   return mergeGeometries(parts);
 }
 
-function createMushroomCollectMesh() {
-  const s = 1.6;
-  const shiny = (c) => new THREE.MeshPhongMaterial({ color: c, shininess: 80, specular: 0x886688 });
-  const group = new THREE.Group();
-
-  const stipe = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16 * s, 0.5 * s, 0.16 * s),
-    shiny(0xd4b0e8)
-  );
-  stipe.position.y = 0.25 * s;
-  group.add(stipe);
-
-  const cap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.6 * s, 0.14 * s, 0.6 * s),
-    shiny(MUSHROOM_COLOR)
-  );
-  cap.position.y = 0.55 * s;
-  group.add(cap);
-
-  const cap2 = new THREE.Mesh(
-    new THREE.BoxGeometry(0.48 * s, 0.12 * s, 0.48 * s),
-    shiny(0xb040e0)
-  );
-  cap2.position.y = 0.66 * s;
-  group.add(cap2);
-
-  const cap3 = new THREE.Mesh(
-    new THREE.BoxGeometry(0.32 * s, 0.1 * s, 0.32 * s),
-    shiny(0xd060ff)
-  );
-  cap3.position.y = 0.75 * s;
-  group.add(cap3);
-
-  return group;
-}
 
 const _groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const _clickPoint = new THREE.Vector3();
@@ -253,6 +159,7 @@ export class FlowerManager {
     this.flowerById = new Map();
     this.spawnTimer = 0;
     this.collectAnimations = [];
+    this._nextId = 0;
 
     const gs = this.world.gridSize;
     const step = 2 + 0.15;
@@ -307,7 +214,35 @@ export class FlowerManager {
     this._shroomGlowMesh.frustumCulled = false;
     this.scene.add(this._shroomGlowMesh);
 
+    this._collectPool = [];
+    for (let i = 0; i < COLLECT_POOL_SIZE; i++) {
+      const mesh = new THREE.Mesh(_collectGeo, _collectMat.clone());
+      mesh.visible = false;
+      this.scene.add(mesh);
+      this._collectPool.push(mesh);
+    }
+
     for (let i = 0; i < F.initialSpawnCount; i++) {
+      this.spawnFlower();
+    }
+  }
+
+  resetAll() {
+    this.flowers = [];
+    this.flowerById.clear();
+    this.spawnTimer = 0;
+    for (const anim of this.collectAnimations) {
+      anim.mesh.visible = false;
+      this._collectPool.push(anim.mesh);
+    }
+    this.collectAnimations = [];
+    this._rebuildInstances();
+  }
+
+  fillField() {
+    const gs = this.world.gridSize;
+    const max = lookupMax(F.maxByGridSize, gs) + this.state.getCapacityBonus();
+    while (this.flowers.length < max) {
       this.spawnFlower();
     }
   }
@@ -474,15 +409,34 @@ export class FlowerManager {
       const t = anim.time / 0.3;
 
       if (t >= 1) {
-        this.scene.remove(anim.mesh);
+        anim.mesh.visible = false;
+        this._collectPool.push(anim.mesh);
         const last = this.collectAnimations.length - 1;
         if (i !== last) this.collectAnimations[i] = this.collectAnimations[last];
         this.collectAnimations.pop();
       } else {
         anim.mesh.position.y += dt * 4;
-        anim.mesh.scale.setScalar(1 - t);
+        anim.mesh.material.opacity = 1 - t;
+        const s = (1 - t) * (anim.mesh.scale.x > 1 ? 1.4 : 1);
+        anim.mesh.scale.setScalar(s);
       }
     }
+  }
+
+  checkHover(raycaster) {
+    raycaster.ray.intersectPlane(_groundPlane, _clickPoint);
+    if (!_clickPoint) return false;
+
+    for (let i = this.flowers.length - 1; i >= 0; i--) {
+      const f = this.flowers[i];
+      if (f.spawning) continue;
+      const dx = _clickPoint.x - f.x;
+      const dz = _clickPoint.z - f.z;
+      const dist = dx * dx + dz * dz;
+      const hr = (f.isMega || f.isMushroom) ? 0.94 * 1.6 : 0.94;
+      if (dist < hr * hr) return true;
+    }
+    return false;
   }
 
   checkClick(raycaster) {
@@ -519,6 +473,21 @@ export class FlowerManager {
     return this._collectByIndex(idx);
   }
 
+  collectNearPoint(x, z, radius) {
+    const r2 = radius * radius;
+    const results = [];
+    for (let i = this.flowers.length - 1; i >= 0; i--) {
+      const f = this.flowers[i];
+      if (f.spawning) continue;
+      const dx = x - f.x;
+      const dz = z - f.z;
+      if (dx * dx + dz * dz < r2) {
+        results.push(this._collectByIndex(i));
+      }
+    }
+    return results;
+  }
+
   _collectByIndex(index) {
     const flower = this.flowers[index];
     const last = this.flowers.length - 1;
@@ -526,12 +495,15 @@ export class FlowerManager {
     this.flowers.pop();
     this.flowerById.delete(flower.id);
 
-    const mesh = flower.isMushroom
-      ? createMushroomCollectMesh()
-      : createCollectMesh(flower.colorHex, flower.isMega);
-    mesh.position.set(flower.x, 0.01, flower.z);
-    this.scene.add(mesh);
-    this.collectAnimations.push({ mesh, time: 0 });
+    if (this._collectPool.length > 0) {
+      const mesh = this._collectPool.pop();
+      mesh.material.color.setHex(flower.isMushroom ? MUSHROOM_COLOR : flower.isMega ? 0xffd700 : flower.colorHex);
+      mesh.material.opacity = 1;
+      mesh.position.set(flower.x, 0.5, flower.z);
+      mesh.scale.setScalar(flower.isMega ? 1.4 : 1);
+      mesh.visible = true;
+      this.collectAnimations.push({ mesh, time: 0, pooled: true });
+    }
 
     return { value: flower.value, x: flower.x, y: 0.01, z: flower.z, isMushroom: !!flower.isMushroom };
   }

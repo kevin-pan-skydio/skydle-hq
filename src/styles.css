@@ -115,7 +115,9 @@ body.placement-mode::before {
   left: 20px;
   z-index: 10;
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: calc(5 * (44px + 6px));
 }
 
 .badge {
@@ -123,12 +125,12 @@ body.placement-mode::before {
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(4px);
   color: #fff;
-  padding: 14px 22px;
-  border-radius: 14px;
-  font-size: 30px;
+  padding: 10px 15px;
+  border-radius: 10px;
+  font-size: 21px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   animation: badgeIn 0.3s ease;
   cursor: default;
@@ -147,7 +149,7 @@ body.placement-mode::before {
 
 .badge span {
   font-weight: bold;
-  font-size: 30px;
+  font-size: 21px;
 }
 
 .badge-tip {
@@ -402,6 +404,590 @@ body.placement-mode::before {
   animation: skillPointGain 0.4s ease;
 }
 
+/* Skill Tree Modal */
+#skill-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlayIn 0.2s ease;
+}
+
+#skill-overlay.hidden {
+  display: none;
+}
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+#skill-tree-modal {
+  background: radial-gradient(ellipse at center, rgba(15, 12, 30, 0.98) 0%, rgba(5, 5, 15, 0.99) 100%);
+  border: 2px solid rgba(255, 215, 0, 0.25);
+  border-radius: 20px;
+  width: 640px;
+  max-width: 94vw;
+  max-height: 90vh;
+  color: #fff;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 80px rgba(255, 215, 0, 0.08), inset 0 0 60px rgba(255, 215, 0, 0.02);
+  animation: modalIn 0.25s ease;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+#skill-tree-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.12);
+  gap: 10px;
+}
+
+#skill-menu-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #ffd700;
+  flex: 1;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+}
+
+#skill-menu-balance {
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+  padding: 5px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 215, 0, 0.25);
+}
+
+#skill-menu-close {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 22px;
+  padding: 0 4px;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+#skill-menu-close:hover {
+  color: #fff;
+}
+
+#skill-tree-body {
+  position: relative;
+  height: 520px;
+  overflow: hidden;
+}
+
+#skill-tree-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+#skill-tree-lines line {
+  stroke: rgba(255, 215, 0, 0.12);
+  stroke-width: 2;
+  stroke-dasharray: 6, 4;
+}
+
+#skill-tree-lines line.active {
+  stroke: rgba(255, 215, 0, 0.5);
+  stroke-width: 2.5;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.3));
+}
+
+#skill-tree-nodes {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.skill-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 110px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s;
+}
+
+.skill-node:hover {
+  transform: scale(1.08);
+}
+
+.skill-node.locked {
+  opacity: 0.3;
+  cursor: default;
+  filter: grayscale(0.8);
+}
+
+.skill-node.locked:hover {
+  transform: none;
+}
+
+.skill-node.cant-afford {
+  opacity: 0.55;
+}
+
+.node-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 215, 0, 0.25);
+  background: rgba(20, 15, 40, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  position: relative;
+}
+
+.skill-node:hover .node-ring {
+  border-color: rgba(255, 215, 0, 0.6);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+}
+
+.skill-node.owned .node-ring {
+  border-color: rgba(100, 220, 100, 0.7);
+  background: rgba(30, 60, 30, 0.8);
+  box-shadow: 0 0 20px rgba(100, 220, 100, 0.2);
+}
+
+.skill-node.owned .node-ring::after {
+  content: '✓';
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  background: #4caf50;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(5, 5, 15, 0.9);
+}
+
+.node-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.node-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffd700;
+  margin-top: 8px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.skill-node.owned .node-label {
+  color: #8ee68e;
+}
+
+.node-desc {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.node-cost {
+  font-size: 11px;
+  font-weight: bold;
+  color: #ffd700;
+  margin-top: 4px;
+  background: rgba(255, 215, 0, 0.1);
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.skill-node.owned .node-cost {
+  display: none;
+}
+
+/* Tree layout positions */
+.skill-node.tier-1 {
+  left: 50%;
+  top: 20px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-2 {
+  left: 50%;
+  top: 180px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-2.left {
+  left: 22%;
+  top: 180px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-2.right {
+  left: 78%;
+  top: 180px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-3 {
+  left: 50%;
+  top: 340px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-3.left {
+  left: 22%;
+  top: 340px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-3.right {
+  left: 78%;
+  top: 340px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-4 {
+  left: 50%;
+  top: 500px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-1:hover {
+  transform: translateX(-50%) scale(1.08);
+}
+
+.skill-node.tier-2:hover {
+  transform: translateX(-50%) scale(1.08);
+}
+
+.skill-node.tier-2.left:hover {
+  transform: translateX(-50%) scale(1.08);
+}
+
+.skill-node.tier-2.right:hover {
+  transform: translateX(-50%) scale(1.08);
+}
+
+.skill-node.tier-3:hover {
+  transform: translateX(-50%) scale(1.08);
+}
+
+.skill-node.tier-3.left:hover {
+  transform: translateX(-50%) scale(1.08);
+}
+
+.skill-node.tier-3.right:hover {
+  transform: translateX(-50%) scale(1.08);
+}
+
+.skill-node.tier-4:hover {
+  transform: translateX(-50%) scale(1.08);
+}
+
+.skill-node.locked.tier-1:hover,
+.skill-node.locked.tier-2:hover,
+.skill-node.locked.tier-2.left:hover,
+.skill-node.locked.tier-2.right:hover,
+.skill-node.locked.tier-3:hover,
+.skill-node.locked.tier-3.left:hover,
+.skill-node.locked.tier-3.right:hover,
+.skill-node.locked.tier-4:hover {
+  transform: translateX(-50%);
+}
+
+/* Welcome Modal */
+#welcome-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlayIn 0.4s ease;
+}
+
+#welcome-modal.hidden {
+  display: none;
+}
+
+#welcome-box {
+  background: rgba(12, 10, 25, 0.97);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: 20px;
+  padding: 32px 36px;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 0 80px rgba(255, 215, 0, 0.08);
+  animation: modalIn 0.35s ease;
+}
+
+#welcome-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ffd700;
+  margin-bottom: 16px;
+  text-shadow: 0 0 16px rgba(255, 215, 0, 0.25);
+}
+
+#welcome-body {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+
+#welcome-body strong {
+  color: #ffd700;
+}
+
+#welcome-go {
+  background: rgba(255, 215, 0, 0.15);
+  border: 2px solid rgba(255, 215, 0, 0.45);
+  color: #ffd700;
+  padding: 14px 32px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+#welcome-go:hover,
+#welcome-load:hover {
+  background: rgba(255, 215, 0, 0.25);
+  border-color: rgba(255, 215, 0, 0.7);
+  transform: scale(1.04);
+}
+
+#welcome-load {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.6);
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.15s ease;
+  display: block;
+  width: 100%;
+}
+
+#game-menu-wrap {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+}
+
+#game-menu-btn {
+  background: rgba(12, 10, 25, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#game-menu-btn:hover {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+  transform: scale(1.1);
+}
+
+#game-menu {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(12, 10, 25, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+  backdrop-filter: blur(12px);
+}
+
+#game-menu.hidden {
+  display: none;
+}
+
+#game-menu button {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  text-align: left;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+#game-menu button:hover {
+  background: rgba(255, 215, 0, 0.12);
+  color: #ffd700;
+}
+
+/* Skill Confirm Dialog */
+#skill-confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlayIn 0.15s ease;
+}
+
+#skill-confirm.hidden {
+  display: none;
+}
+
+#skill-confirm-box {
+  background: rgba(15, 12, 30, 0.98);
+  border: 2px solid rgba(255, 215, 0, 0.35);
+  border-radius: 16px;
+  padding: 24px 28px;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(255, 215, 0, 0.1);
+  animation: modalIn 0.2s ease;
+}
+
+#skill-confirm-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #ffd700;
+  margin-bottom: 8px;
+}
+
+#skill-confirm-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 14px;
+}
+
+#skill-confirm-warning {
+  font-size: 12px;
+  color: rgba(255, 180, 180, 0.85);
+  background: rgba(255, 60, 60, 0.08);
+  border: 1px solid rgba(255, 60, 60, 0.2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+
+#skill-confirm-warning strong {
+  color: #ff9090;
+}
+
+#skill-confirm-cost {
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffd700;
+  margin-bottom: 18px;
+}
+
+#skill-confirm-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+#skill-confirm-yes {
+  background: rgba(255, 215, 0, 0.15);
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+  padding: 10px 24px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+#skill-confirm-yes:hover {
+  background: rgba(255, 215, 0, 0.25);
+  border-color: rgba(255, 215, 0, 0.7);
+}
+
+#skill-confirm-no {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.6);
+  padding: 10px 24px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  transition: background 0.15s, color 0.15s;
+}
+
+#skill-confirm-no:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
 /* Bottom Buttons */
 #bottom-buttons {
   position: fixed;
@@ -440,6 +1026,41 @@ body.placement-mode::before {
 }
 
 #buy-r1-btn .btn-sub {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+#buy-s2-btn {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 16px;
+  font-size: 22px;
+  cursor: pointer;
+  border: 2px solid rgba(0, 100, 220, 0.4);
+  transition: transform 0.15s, border-color 0.15s;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+#buy-s2-btn:hover {
+  transform: scale(1.05);
+  border-color: rgba(0, 100, 220, 0.8);
+}
+
+#buy-s2-btn.cannot-afford {
+  opacity: 0.5;
+}
+
+#buy-s2-btn.hidden {
+  display: none;
+}
+
+#buy-s2-btn .btn-sub {
   font-size: 12px;
   opacity: 0.6;
 }
@@ -632,7 +1253,7 @@ body.placement-mode::before {
 /* Placement Banner */
 #placement-banner {
   position: fixed;
-  top: 60px;
+  top: 40%;
   left: 50%;
   transform: translateX(-50%);
   z-index: 55;
@@ -740,6 +1361,34 @@ body.placement-mode::before {
 .shop-item.mushroom-item .item-desc em {
   color: #ffd700;
   font-style: normal;
+}
+
+.shop-item.hidden {
+  display: none;
+}
+
+.shop-divider {
+  text-align: center;
+  color: #4488ff;
+  font-size: 12px;
+  letter-spacing: 2px;
+  padding: 10px 0 4px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(68, 136, 255, 0.25);
+  font-weight: bold;
+}
+.shop-divider.hidden {
+  display: none;
+}
+
+#s2-speed-item .item-name,
+#s2-harvest-item .item-name {
+  color: #4488ff;
+}
+#s2-speed-item .item-icon,
+#s2-harvest-item .item-icon {
+  background: rgba(68, 136, 255, 0.15);
+  border: 1px solid rgba(68, 136, 255, 0.3);
 }
 
 .shop-item.dock-skill-gen {
@@ -966,26 +1615,10 @@ body.placement-mode::before {
   }
 }
 
-body::after {
-  content: 'Click flowers to collect them • Buy drones to automate!';
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.5);
-  color: rgba(255, 255, 255, 0.5);
-  padding: 8px 16px;
-  border-radius: 10px;
-  font-size: 18px;
-  z-index: 5;
-  animation: fadeIn 0.5s ease;
-  pointer-events: none;
-  white-space: nowrap;
-}
 
 #fps-counter {
   position: fixed;
-  top: 10px;
+  top: 80px;
   left: 10px;
   z-index: 10;
   color: rgba(255, 255, 255, 0.5);
@@ -1027,8 +1660,8 @@ body::after {
 /* Rival CEO countdown */
 #rival-countdown {
   position: fixed;
-  bottom: 20px;
-  left: 20px;
+  top: 10px;
+  left: 10px;
   z-index: 21;
   display: flex;
   align-items: center;

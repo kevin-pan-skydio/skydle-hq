@@ -7,6 +7,7 @@ import { GameState } from './GameState.js';
 import { UI } from './UI.js';
 import { FloatingTextManager } from './FloatingText.js';
 import { RivalCEO } from './RivalCEO.js';
+import { BeehiveManager } from './BeehiveManager.js';
 
 const PIXEL_RATIO = 3;
 
@@ -27,13 +28,40 @@ export class Game {
     this.droneManager = new DroneManager(this.scene, this.state, this.flowerManager, this.world, this.floatingText);
     this.ui = new UI(this.state, this.droneManager, this.flowerManager, this.camera, this.renderer);
     this.rivalCEO = new RivalCEO(this.scene, this.world);
+    this.beehive = new BeehiveManager(this.scene, this.state, this.world);
+    this.droneManager.beehive = this.beehive;
 
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.hoveredTile = null;
 
+    this.state._onReset = () => this._handlePrestigeReset();
+    this.state._onImport = () => this._applyPerkEffects();
+
+    this._applyPerkEffects();
+
     this.setupInput();
     window.addEventListener('resize', () => this.onResize());
+  }
+
+  _applyPerkEffects() {
+    if (this.state.hasPerk('freeDrones')) {
+      const gs = CONFIG.world.gridSize;
+      this.droneManager.spawnDroneAt(-1, -1);
+      this.droneManager.spawnDroneAt(gs, gs);
+    }
+    if (this.state.hasPerk('fullBloom')) {
+      this.flowerManager.fillField();
+    }
+  }
+
+  _handlePrestigeReset() {
+    this.droneManager.resetAll();
+    this.flowerManager.resetAll();
+    this.world.resetDocks();
+    this.rivalCEO.reset?.();
+    this.beehive.reset();
+    this._applyPerkEffects();
   }
 
   setupCamera() {
@@ -113,6 +141,12 @@ export class Game {
         this.hoveredTile = tile;
       }
     }
+
+    if (!this.droneManager.placementMode && this.state.hasPerk('manualHarvest') && this.flowerManager.checkHover(this.raycaster)) {
+      this.canvas.style.cursor = 'grab';
+    } else {
+      this.canvas.style.cursor = this.droneManager.placementMode ? 'crosshair' : 'pointer';
+    }
   }
 
   onPointerDown(e) {
@@ -150,15 +184,20 @@ export class Game {
 
     this.ui.closeDronePopup();
 
+    if (this.rivalCEO.active) return;
+    if (!this.state.hasPerk('manualHarvest')) return;
+
     const flowerHit = this.flowerManager.checkClick(this.raycaster);
     if (flowerHit) {
-      const val = this.state.getCollectionValue(flowerHit.value);
-      this.state.addFlowers(val);
       if (flowerHit.isMushroom) {
         const xp = this.state.getMushroomSkillXp();
         this.state.addSkillXp(xp);
-        this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, '+' + val + ' +★' + xp);
+        this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, '+★' + xp);
       } else {
+        let val = this.state.getCollectionValue(flowerHit.value);
+        if (this.beehive.isInRadius(flowerHit.x, flowerHit.z)) val *= 2;
+        if (this.state.hasPerk('goldenFlowers')) val *= 3;
+        this.state.addFlowers(val);
         this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, '+' + val);
       }
     }
@@ -232,6 +271,7 @@ export class Game {
 
     this.flowerManager.update(gameDt);
     this.droneManager.update(gameDt);
+    this.beehive.update(gameDt);
     this.floatingText.update(dt);
     this.ui.update(gameDt);
 

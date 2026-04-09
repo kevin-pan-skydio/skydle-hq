@@ -67,7 +67,7 @@
       "cooldown": 8.0,
       "flightHeight": 2.5,
       "groundHeight": 0.25,
-      "price": { "earlyPrices": [1, 3, 12], "scale": 1.6, "linearAfter": 14, "linearStep": 1000 },
+      "price": { "earlyPrices": [1, 3, 8], "scale": 1.6, "linearAfter": 14, "linearStep": 1000 },
       "s2Multiplier": 2,
       "upgrades": {
         "dock": {

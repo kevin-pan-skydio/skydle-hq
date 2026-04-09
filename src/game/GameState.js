@@ -496,10 +496,10 @@ export class GameState {
   computeFlowersPerSecond() {
     const now = performance.now();
     this._recentCollections = this._recentCollections.filter(
-      (c) => now - c.time < 5000
+      (c) => now - c.time < 60000
     );
     const total = this._recentCollections.reduce((s, c) => s + c.amount, 0);
-    this.flowersPerSecond = Math.round((total / 5) * 10) / 10;
+    this.flowersPerSecond = Math.round((total / 60) * 10) / 10;
   }
 
   getSkillBarMax() {

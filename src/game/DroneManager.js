@@ -618,7 +618,7 @@ export class DroneManager {
   applyDockSkillGen() {
     this._dockSkillGen = true;
     for (const drone of this.drones) {
-      if (drone.dockMesh && !drone.dockHoloMat) {
+      if (drone.dockMesh) {
         drone.dockMesh.material = new THREE.MeshLambertMaterial({
           color: 0xbb44ff, vertexColors: false,
         });
@@ -668,10 +668,10 @@ export class DroneManager {
         const t = (Math.sin(now * 0.003) + 1) * 0.5;
         drone.holoMat.color.lerpColors(_holoLight, _holoDark, t);
         if (drone.propHoloMat) drone.propHoloMat.color.lerpColors(_holoLight, _holoDark, t * 0.8);
-        if (drone.dockHoloMat) drone.dockHoloMat.color.lerpColors(_holoLight, _holoDark, t);
+        if (drone.dockHoloMat && !this._dockSkillGen) drone.dockHoloMat.color.lerpColors(_holoLight, _holoDark, t);
       }
 
-      if (this._dockSkillGen && drone.dockMesh && !drone._dockSkillGenApplied && !drone.dockHoloMat) {
+      if (this._dockSkillGen && drone.dockMesh && !drone._dockSkillGenApplied) {
         drone.dockMesh.material = new THREE.MeshLambertMaterial({
           color: 0xbb44ff, vertexColors: false,
         });

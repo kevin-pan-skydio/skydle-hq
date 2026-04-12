@@ -582,20 +582,24 @@ export class DroneManager {
 
   getDroneSpeed(drone) {
     if (drone.isS2) {
-      let base = (R1.baseSpeed * R1.s2Multiplier) + this.state.s2SpeedLevel * S2UPG.propeller.speedPerLevel;
+      const lvl = this.state.s2SpeedLevel;
+      let base = lvl === 0 ? R1.baseSpeed * S2.baseSpeedMultiplier : S2UPG.propeller.speeds[lvl - 1];
       if (this.state.hasPerk('speedBoost')) base *= 1.5;
       return drone.isUltimate ? base * S2UPG.ultimate.speedMultiplier : base;
     }
-    let base = R1.baseSpeed + this.state.droneSpeedLevel * UPG.propeller.speedPerLevel;
+    const lvl = this.state.droneSpeedLevel;
+    let base = lvl === 0 ? R1.baseSpeed : UPG.propeller.speeds[lvl - 1];
     if (this.state.hasPerk('speedBoost')) base *= 1.5;
     return drone.isUltimate ? base * UPG.ultimate.speedMultiplier : base;
   }
 
   getDroneHarvestTime(drone) {
     if (drone.isS2) {
-      return Math.max(S2UPG.harvester.minHarvestTime, (R1.baseHarvestTime / R1.s2Multiplier) - this.state.s2HarvestLevel * S2UPG.harvester.reductionPerLevel);
+      const lvl = this.state.s2HarvestLevel;
+      return lvl === 0 ? R1.baseHarvestTime / S2.baseHarvestDivisor : S2UPG.harvester.times[lvl - 1];
     }
-    return Math.max(UPG.harvester.minHarvestTime, R1.baseHarvestTime - this.state.droneHarvestLevel * UPG.harvester.reductionPerLevel);
+    const lvl = this.state.droneHarvestLevel;
+    return lvl === 0 ? R1.baseHarvestTime : UPG.harvester.times[lvl - 1];
   }
 
   getDroneCooldown(drone) {

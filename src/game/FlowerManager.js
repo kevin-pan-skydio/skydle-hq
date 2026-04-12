@@ -250,6 +250,11 @@ export class FlowerManager {
       this._collectPool.push(anim.mesh);
     }
     this.collectAnimations = [];
+
+    for (let i = 0; i < F.initialSpawnCount; i++) {
+      this.spawnFlower();
+    }
+
     this._instancesDirty = true;
     this._rebuildInstances();
   }

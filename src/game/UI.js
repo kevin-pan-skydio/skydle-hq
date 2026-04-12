@@ -3,9 +3,9 @@ import CONFIG from '../config.json';
 import SKILL_TREE from '../config-skill-tree.json';
 
 const R1 = CONFIG.drones.r1;
-const S2CFG = CONFIG.drones.s2;
+const S2 = CONFIG.drones.s2;
 const UPG = R1.upgrades;
-const S2UPG = S2CFG.upgrades;
+const S2UPG = S2.upgrades;
 
 export class UI {
   constructor(state, droneManager, flowerManager, camera, renderer) {
@@ -99,6 +99,7 @@ export class UI {
     this.setupSkillMenu();
     this.setupWelcome();
     this.setupSaveLoad();
+    this.setupPowerupMenu();
     this.state.onChange(() => this.updateDisplay());
     this.droneManager.onPlacementChange((active) => this.onPlacementChange(active));
     this.fpsTimer = 0;
@@ -310,7 +311,6 @@ export class UI {
       if (!drone) return;
       const isS2 = drone.isS2;
       const priceKey = isS2 ? 's2-ultimate' : 'r1-ultimate';
-      const ultCfg = isS2 ? S2UPG.ultimate : UPG.ultimate;
       const cost = this.state.prices[priceKey];
       if (!this.state.spendFlowers(cost)) {
         this.showToast('Not enough flowers!');
@@ -320,7 +320,11 @@ export class UI {
         const typeName = isS2 ? 'S2' : 'R1';
         this.showToast(`🌈 Ultimate ${typeName} activated!`);
         if (!this.state.devMode) {
-          this.state.prices[priceKey] += ultCfg.priceStep;
+          const ultTable = isS2 ? S2UPG.ultimate.prices : UPG.ultimate.prices;
+          const ultCount = this.droneManager.getDrones().filter(d => d.isS2 === isS2 && d.isUltimate).length;
+          if (ultCount < ultTable.length) {
+            this.state.prices[priceKey] = ultTable[ultCount];
+          }
         }
         this.state._notify();
         this.renderDronePopup();
@@ -401,10 +405,9 @@ export class UI {
       if (!id) return;
       const name = document.querySelector(`.skill-node[data-skill="${id}"] .node-label`).textContent;
       if (this.state.buySkillPerk(id)) {
-        this.showToast(`★ ${name} unlocked! Board reset — rebuild your empire.`);
-        this._drawTreeLines();
+        this.skillOverlay.classList.add('hidden');
         this.closeDronePopup();
-        setTimeout(() => this.skillOverlay.classList.add('hidden'), 600);
+        this.showToast(`★ ${name} unlocked! Board reset — rebuild your empire.`);
       }
     });
 
@@ -430,6 +433,37 @@ export class UI {
         this._confirmCostEl.textContent = perk.cost + ' ★';
         this._confirmEl.classList.remove('hidden');
       });
+    });
+
+    this._setupTreeDrag();
+  }
+
+  _setupTreeDrag() {
+    const body = document.getElementById('skill-tree-body');
+    let dragging = false;
+    let startX, startY, scrollLeft, scrollTop;
+
+    body.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.skill-node')) return;
+      dragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      scrollLeft = body.scrollLeft;
+      scrollTop = body.scrollTop;
+      body.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      body.scrollLeft = scrollLeft - (e.clientX - startX);
+      body.scrollTop = scrollTop - (e.clientY - startY);
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      body.style.cursor = '';
     });
   }
 
@@ -519,13 +553,97 @@ export class UI {
     });
   }
 
+  setupPowerupMenu() {
+    this._powerupBadge = document.getElementById('badge-powerup');
+    this._powerupCount = document.getElementById('powerup-count');
+    this._powerupMenu = document.getElementById('powerup-menu');
+    this._powerupItems = document.getElementById('powerup-menu-items');
+    this._powerupEmpty = document.getElementById('powerup-menu-empty');
+
+    this._powerupBadge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._powerupMenu.classList.toggle('hidden');
+      if (!this._powerupMenu.classList.contains('hidden')) {
+        this.updatePowerupMenu();
+      }
+    });
+
+    document.getElementById('powerup-menu-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._powerupMenu.classList.add('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!this._powerupBadge.contains(e.target) && !this._powerupMenu.contains(e.target)) {
+        this._powerupMenu.classList.add('hidden');
+      }
+    });
+  }
+
+  updatePowerupMenu() {
+    const catCfg = CONFIG.cats;
+    const DEFS = {};
+    for (const [, cat] of Object.entries(catCfg)) {
+      const p = cat.powerup;
+      DEFS[p.id] = { icon: p.icon, label: p.label, desc: p.desc, value: p.value };
+    }
+
+    const entries = Object.entries(this.state.powerups).filter(([, qty]) => qty > 0);
+    const totalCount = entries.reduce((sum, [, qty]) => sum + qty, 0);
+
+    this._powerupCount.textContent = totalCount;
+    this._powerupBadge.classList.toggle('has-items', totalCount > 0);
+
+    if (entries.length === 0) {
+      this._powerupItems.innerHTML = '';
+      this._powerupEmpty.style.display = '';
+      return;
+    }
+
+    this._powerupEmpty.style.display = 'none';
+    this._powerupItems.innerHTML = '';
+
+    for (const [id, qty] of entries) {
+      const def = DEFS[id] || { icon: '❓', label: id, desc: '', value: 0 };
+      const div = document.createElement('div');
+      div.className = 'powerup-item';
+      div.innerHTML = `
+        <div class="powerup-item-icon">${def.icon}</div>
+        <div class="powerup-item-info">
+          <div class="powerup-item-name">${def.label}</div>
+          <div class="powerup-item-desc">${def.desc}</div>
+          <div class="powerup-item-qty">×${qty}</div>
+        </div>
+        <button class="powerup-use-btn" data-powerup="${id}">Use</button>`;
+      this._powerupItems.appendChild(div);
+    }
+
+    this._powerupItems.querySelectorAll('.powerup-use-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const pid = btn.dataset.powerup;
+        const def = DEFS[pid];
+        if (def && this.state.usePowerup(pid)) {
+          this.state.addFlowers(def.value);
+          this.showToast(`+${def.value.toLocaleString()} 🌸 from ${def.label}!`);
+          this.updatePowerupMenu();
+        }
+      });
+    });
+  }
+
   _drawTreeLines() {
     const svg = this.skillTreeLines;
     const body = document.getElementById('skill-tree-body');
     const rect = body.getBoundingClientRect();
-    svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+    const w = body.scrollWidth;
+    const h = body.scrollHeight;
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    svg.style.width = w + 'px';
+    svg.style.height = h + 'px';
     svg.innerHTML = '';
 
+    const scrollX = body.scrollLeft;
+    const scrollY = body.scrollTop;
     const branches = SKILL_TREE.branches;
 
     for (const [fromId, toId] of branches) {
@@ -535,10 +653,10 @@ export class UI {
 
       const fr = fromEl.getBoundingClientRect();
       const tr = toEl.getBoundingClientRect();
-      const x1 = fr.left + fr.width / 2 - rect.left;
-      const y1 = fr.top + fr.height / 2 - rect.top;
-      const x2 = tr.left + tr.width / 2 - rect.left;
-      const y2 = tr.top + tr.height / 2 - rect.top;
+      const x1 = fr.left + fr.width / 2 - rect.left + scrollX;
+      const y1 = fr.top + fr.height / 2 - rect.top + scrollY;
+      const x2 = tr.left + tr.width / 2 - rect.left + scrollX;
+      const y2 = tr.top + tr.height / 2 - rect.top + scrollY;
 
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('x1', x1);
@@ -679,7 +797,12 @@ export class UI {
   }
 
   updateDisplay() {
-    this.flowerCountEl.textContent = Math.floor(this.state.flowers);
+    this.flowerCountEl.textContent = Math.floor(this.state.flowers).toLocaleString();
+
+    const totalPowerups = Object.values(this.state.powerups).reduce((s, q) => s + q, 0);
+    this._powerupCount.textContent = totalPowerups;
+    this._powerupBadge.classList.toggle('hidden', !this.state.hasPerk('felix'));
+    this._powerupBadge.classList.toggle('has-items', totalPowerups > 0);
 
     // Buy R1 button
     this.costEl.textContent = this.state.prices['r1-drone'].toLocaleString() + ' 🌸';
@@ -727,17 +850,18 @@ export class UI {
     }
 
     const spdLvl = this.state.droneSpeedLevel;
-    const maxSpd = spdLvl >= UPG.propeller.maxLevel;
-    const spdNow = (R1.baseSpeed + spdLvl * UPG.propeller.speedPerLevel).toFixed(1);
-    const spdNext = (R1.baseSpeed + (spdLvl + 1) * UPG.propeller.speedPerLevel).toFixed(1);
+    const spdMax = UPG.propeller.prices.length;
+    const maxSpd = spdLvl >= spdMax;
+    const spdNow = spdLvl === 0 ? R1.baseSpeed : UPG.propeller.speeds[spdLvl - 1];
+    const spdNext = spdLvl < spdMax ? UPG.propeller.speeds[spdLvl] : spdNow;
     const spdPct = spdLvl > 0 ? Math.round(((spdNow / R1.baseSpeed) - 1) * 100) : 0;
     const spdTier = UPG.propeller.tiers?.[spdLvl - 1] || '';
     if (maxSpd) {
-      this.globalSpeedLevelEl.textContent = `${spdLvl}/${UPG.propeller.maxLevel} — MAX (${spdTier}) — ${spdNow} speed (+${spdPct}%)`;
+      this.globalSpeedLevelEl.textContent = `${spdLvl}/${spdMax} — MAX (${spdTier}) — ${spdNow} speed (+${spdPct}%)`;
     } else if (spdLvl === 0) {
-      this.globalSpeedLevelEl.textContent = `0/${UPG.propeller.maxLevel} — ${spdNow} → ${spdNext} speed`;
+      this.globalSpeedLevelEl.textContent = `0/${spdMax} — ${spdNow} → ${spdNext} speed`;
     } else {
-      this.globalSpeedLevelEl.textContent = `${spdLvl}/${UPG.propeller.maxLevel} (${spdTier}) — ${spdNow} → ${spdNext} speed (+${spdPct}%)`;
+      this.globalSpeedLevelEl.textContent = `${spdLvl}/${spdMax} (${spdTier}) — ${spdNow} → ${spdNext} speed (+${spdPct}%)`;
     }
     const spdBtn = document.getElementById('buy-global-speed');
     this._setBtnState(spdBtn, 'global-speed-cost', maxSpd);
@@ -745,12 +869,12 @@ export class UI {
     if (!maxSpd) { const c = spdBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['drone-speed'].toLocaleString() + ' 🌸'; }
 
     const hvLvl = this.state.droneHarvestLevel;
-    const hvMax = UPG.harvester.maxLevel;
-    const hvNow = Math.max(UPG.harvester.minHarvestTime, R1.baseHarvestTime - hvLvl * UPG.harvester.reductionPerLevel).toFixed(1);
-    const hvNext = Math.max(UPG.harvester.minHarvestTime, R1.baseHarvestTime - (hvLvl + 1) * UPG.harvester.reductionPerLevel).toFixed(1);
+    const hvMax = UPG.harvester.prices.length;
+    const hvNow = hvLvl === 0 ? R1.baseHarvestTime : UPG.harvester.times[hvLvl - 1];
+    const hvNext = hvLvl < hvMax ? UPG.harvester.times[hvLvl] : hvNow;
     const hvPct = hvLvl > 0 ? Math.round((1 - hvNow / R1.baseHarvestTime) * 100) : 0;
     const hvTier = UPG.harvester.tiers?.[hvLvl - 1] || '';
-    const maxHv = hvLvl >= hvMax || parseFloat(hvNow) <= UPG.harvester.minHarvestTime;
+    const maxHv = hvLvl >= hvMax;
     if (maxHv) {
       this.globalHarvestLevelEl.textContent = `${hvLvl}/${hvMax} — MAX (${hvTier}) — ${hvNow}s harvest (-${hvPct}%)`;
     } else if (hvLvl === 0) {
@@ -774,19 +898,20 @@ export class UI {
       s2HarvestItem.classList.remove('hidden');
 
       const s2sLvl = this.state.s2SpeedLevel;
-      const s2sMax = s2sLvl >= S2UPG.propeller.maxLevel;
-      const s2BaseSpd = R1.baseSpeed * R1.s2Multiplier;
-      const s2sNow = (s2BaseSpd + s2sLvl * S2UPG.propeller.speedPerLevel).toFixed(1);
-      const s2sNext = (s2BaseSpd + (s2sLvl + 1) * S2UPG.propeller.speedPerLevel).toFixed(1);
+      const s2sMaxLvl = S2UPG.propeller.prices.length;
+      const s2sMax = s2sLvl >= s2sMaxLvl;
+      const s2BaseSpd = R1.baseSpeed * S2.baseSpeedMultiplier;
+      const s2sNow = s2sLvl === 0 ? s2BaseSpd : S2UPG.propeller.speeds[s2sLvl - 1];
+      const s2sNext = s2sLvl < s2sMaxLvl ? S2UPG.propeller.speeds[s2sLvl] : s2sNow;
       const s2sPct = s2sLvl > 0 ? Math.round(((s2sNow / s2BaseSpd) - 1) * 100) : 0;
       const s2sTier = S2UPG.propeller.tiers?.[s2sLvl - 1] || '';
       const s2SpeedLevelEl = document.getElementById('s2-speed-level');
       if (s2sMax) {
-        s2SpeedLevelEl.textContent = `${s2sLvl}/${S2UPG.propeller.maxLevel} — MAX (${s2sTier}) — ${s2sNow} speed (+${s2sPct}%)`;
+        s2SpeedLevelEl.textContent = `${s2sLvl}/${s2sMaxLvl} — MAX (${s2sTier}) — ${s2sNow} speed (+${s2sPct}%)`;
       } else if (s2sLvl === 0) {
-        s2SpeedLevelEl.textContent = `0/${S2UPG.propeller.maxLevel} — ${s2sNow} → ${s2sNext} speed`;
+        s2SpeedLevelEl.textContent = `0/${s2sMaxLvl} — ${s2sNow} → ${s2sNext} speed`;
       } else {
-        s2SpeedLevelEl.textContent = `${s2sLvl}/${S2UPG.propeller.maxLevel} (${s2sTier}) — ${s2sNow} → ${s2sNext} speed (+${s2sPct}%)`;
+        s2SpeedLevelEl.textContent = `${s2sLvl}/${s2sMaxLvl} (${s2sTier}) — ${s2sNow} → ${s2sNext} speed (+${s2sPct}%)`;
       }
       const s2SpdBtn = document.getElementById('buy-s2-speed');
       this._setBtnState(s2SpdBtn, 's2-speed-cost', s2sMax);
@@ -794,13 +919,13 @@ export class UI {
       if (!s2sMax) { const c = s2SpdBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['s2-speed'].toLocaleString() + ' 🌸'; }
 
       const s2hLvl = this.state.s2HarvestLevel;
-      const s2hMaxLvl = S2UPG.harvester.maxLevel;
-      const s2BaseHt = R1.baseHarvestTime / R1.s2Multiplier;
-      const s2hNow = Math.max(S2UPG.harvester.minHarvestTime, s2BaseHt - s2hLvl * S2UPG.harvester.reductionPerLevel).toFixed(1);
-      const s2hNext = Math.max(S2UPG.harvester.minHarvestTime, s2BaseHt - (s2hLvl + 1) * S2UPG.harvester.reductionPerLevel).toFixed(1);
+      const s2hMaxLvl = S2UPG.harvester.prices.length;
+      const s2BaseHt = R1.baseHarvestTime / S2.baseHarvestDivisor;
+      const s2hNow = s2hLvl === 0 ? s2BaseHt : S2UPG.harvester.times[s2hLvl - 1];
+      const s2hNext = s2hLvl < s2hMaxLvl ? S2UPG.harvester.times[s2hLvl] : s2hNow;
       const s2hPct = s2hLvl > 0 ? Math.round((1 - s2hNow / s2BaseHt) * 100) : 0;
       const s2hTier = S2UPG.harvester.tiers?.[s2hLvl - 1] || '';
-      const maxS2h = s2hLvl >= s2hMaxLvl || parseFloat(s2hNow) <= S2UPG.harvester.minHarvestTime;
+      const maxS2h = s2hLvl >= s2hMaxLvl;
       const s2HarvestLevelEl = document.getElementById('s2-harvest-level');
       if (maxS2h) {
         s2HarvestLevelEl.textContent = `${s2hLvl}/${s2hMaxLvl} — MAX (${s2hTier}) — ${s2hNow}s harvest (-${s2hPct}%)`;
@@ -819,7 +944,6 @@ export class UI {
       s2HarvestItem.classList.add('hidden');
     }
 
-    // Spawn speed upgrade
     const FLCFG = CONFIG.collectibles.flowers;
     const interval = this.state.getSpawnInterval();
     const spawnMax = this.state.getSpawnSpeedMaxLevel();
@@ -827,10 +951,7 @@ export class UI {
     if (maxSpawn) {
       this.spawnLevelEl.textContent = `${this.state.spawnSpeedLevel}/${spawnMax} — MAX`;
     } else {
-      const suCfg = FLCFG.spawnUpgrade;
-      const spawnRange = FLCFG.baseSpawnInterval - suCfg.minInterval;
-      const tNext = Math.min((this.state.spawnSpeedLevel + 1) / suCfg.maxLevel, 1);
-      const intervalNext = (FLCFG.baseSpawnInterval - spawnRange * tNext).toFixed(1);
+      const intervalNext = FLCFG.spawnUpgrade.intervals[this.state.spawnSpeedLevel];
       this.spawnLevelEl.textContent = `${this.state.spawnSpeedLevel}/${spawnMax} — ${interval.toFixed(1)}s → ${intervalNext}s interval`;
     }
     const spawnBtn = document.getElementById('buy-spawn-speed');
@@ -843,21 +964,12 @@ export class UI {
     const batchMax = this.state.getSpawnBatchMaxLevel();
     const maxBatch = this.state.spawnBatchLevel >= batchMax;
     const batchLvl = this.state.spawnBatchLevel;
-    const bu = CONFIG.collectibles.flowers.batchUpgrade;
+    const bu = FLCFG.batchUpgrade;
     if (maxBatch) {
       this.batchLevelEl.textContent = `${batchLvl}/${batchMax} — MAX`;
     } else {
-      const nextBLvl = batchLvl + 1;
-      const batchNow = batchLvl < bu.guaranteed.length ? `${bu.guaranteed[batchLvl]}` : `~${batchExpected}`;
-      let batchNextStr;
-      if (nextBLvl < bu.guaranteed.length) {
-        batchNextStr = `${bu.guaranteed[nextBLvl]}`;
-      } else {
-        const bBase = bu.postGuaranteedMin;
-        const extraSlots = bu.maxCount - bBase;
-        const p = ((nextBLvl - bu.guaranteed.length + 1) / (bu.maxLevel - bu.guaranteed.length + 1)) * bu.maxRollProb;
-        batchNextStr = `~${Math.round((bBase + extraSlots * p) * 10) / 10}`;
-      }
+      const batchNow = batchLvl === 0 ? '1' : `~${batchExpected}`;
+      const batchNextStr = `~${bu.expected[batchLvl]}`;
       this.batchLevelEl.textContent = `${batchLvl}/${batchMax} — ${batchNow} → ${batchNextStr} per cycle`;
     }
     const batchBtn = document.getElementById('buy-spawn-batch');
@@ -872,11 +984,7 @@ export class UI {
     if (maxValue) {
       this.valueLevelEl.textContent = `${this.state.flowerValueLevel}/${valueMax} — MAX`;
     } else {
-      const vu = FLCFG.valueUpgrade;
-      const fvBase = this.state.hasPerk('bloomBoost') ? 5 : vu.baseValue;
-      const nextFvLvl = this.state.flowerValueLevel + 1;
-      const tFv = nextFvLvl / vu.maxLevel;
-      const flowerValNext = Math.max(fvBase + nextFvLvl, Math.round(fvBase + (vu.maxValue - fvBase) * Math.pow(tFv, vu.curve || 1)));
+      const flowerValNext = FLCFG.valueUpgrade.values[this.state.flowerValueLevel];
       this.valueLevelEl.textContent = `${this.state.flowerValueLevel}/${valueMax} — ${flowerVal} → ${flowerValNext} per flower`;
     }
     const valueBtn = document.getElementById('buy-flower-value');
@@ -891,9 +999,7 @@ export class UI {
     if (maxMulti) {
       this.multiLevelEl.textContent = `${this.state.flowerMultiplierLevel}/${multiMax} — MAX`;
     } else {
-      const muCfg = FLCFG.multiplierUpgrade;
-      const tMuNext = (this.state.flowerMultiplierLevel + 1) / muCfg.maxLevel;
-      const flowerMulNext = Math.round((muCfg.baseMultiplier + (muCfg.maxMultiplier - muCfg.baseMultiplier) * tMuNext) * 10) / 10;
+      const flowerMulNext = FLCFG.multiplierUpgrade.multipliers[this.state.flowerMultiplierLevel];
       this.multiLevelEl.textContent = `${this.state.flowerMultiplierLevel}/${multiMax} — ${flowerMul}x → ${flowerMulNext}x`;
     }
     const multiBtn = document.getElementById('buy-flower-multi');
@@ -909,8 +1015,8 @@ export class UI {
     if (maxMega) {
       this.megaLevelEl.textContent = `${this.state.megaFlowerLevel}/${megaMax} — MAX (${chance}%, ${megaVal}x)`;
     } else {
-      const megaPerkBonus = this.state.hasPerk('megaChance') ? 0.2 : 0;
-      const chanceNext = Math.round(((this.state.megaFlowerLevel + 1) * FLCFG.megaUpgrade.chancePerLevel + megaPerkBonus) * 100);
+      const megaPerkBonus = this.state.hasPerk('megaChance') ? 20 : 0;
+      const chanceNext = Math.round(FLCFG.megaUpgrade.chances[this.state.megaFlowerLevel] * 100) + megaPerkBonus;
       this.megaLevelEl.textContent = `${this.state.megaFlowerLevel}/${megaMax} — ${chance}% → ${chanceNext}% chance (${megaVal}x value)`;
     }
     const megaBtn = document.getElementById('buy-mega-flower');
@@ -926,7 +1032,7 @@ export class UI {
     if (maxShroom) {
       this.mushroomLevelEl.textContent = `${this.state.mushroomLevel}/${shroomMax} — MAX (${shroomChance}%, ★${shroomXp})`;
     } else {
-      const shroomChanceNext = Math.round((this.state.mushroomLevel + 1) * FLCFG.mushroomUpgrade.chancePerLevel * 100);
+      const shroomChanceNext = Math.round(FLCFG.mushroomUpgrade.chances[this.state.mushroomLevel] * 100);
       this.mushroomLevelEl.textContent = `${this.state.mushroomLevel}/${shroomMax} — ${shroomChance}% → ${shroomChanceNext}% chance (★${shroomXp} XP)`;
     }
     const shroomBtn = document.getElementById('buy-mushroom');
@@ -942,7 +1048,7 @@ export class UI {
     if (maxCap) {
       this.capacityLevelEl.textContent = `${this.state.capacityLevel}/${capMax} — MAX (${baseMax + capBonus})`;
     } else {
-      const capBonusNext = (this.state.capacityLevel + 1) * FLCFG.capacityUpgrade.bonusPerLevel;
+      const capBonusNext = FLCFG.capacityUpgrade.bonuses[this.state.capacityLevel];
       this.capacityLevelEl.textContent = `${this.state.capacityLevel}/${capMax} — Max: ${baseMax + capBonus} → ${baseMax + capBonusNext}`;
     }
     const capBtn = document.getElementById('buy-flower-capacity');
@@ -1037,7 +1143,7 @@ export class UI {
     if (this.fpsTimer >= 0.5) {
       this.fpsTimer = 0;
       this.state.computeFlowersPerSecond();
-      this.fpsEl.textContent = `(${this.state.flowersPerSecond}/s)`;
+      this.fpsEl.textContent = `(${this.state.flowersPerSecond.toLocaleString()}/s)`;
     }
 
     const prevSP = this.state.skillPoints;

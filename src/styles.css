@@ -502,12 +502,34 @@ body.placement-mode::before {
 #skill-tree-body {
   position: relative;
   height: 520px;
-  overflow: hidden;
+  overflow: auto;
+  cursor: grab;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 215, 0, 0.3) transparent;
+}
+
+#skill-tree-body:active {
+  cursor: grabbing;
+}
+
+#skill-tree-body::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+#skill-tree-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 215, 0, 0.3);
+  border-radius: 3px;
+}
+
+#skill-tree-body::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 #skill-tree-lines {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
@@ -529,7 +551,10 @@ body.placement-mode::before {
 
 #skill-tree-nodes {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 650px;
   z-index: 2;
 }
 
@@ -555,7 +580,7 @@ body.placement-mode::before {
 }
 
 .skill-node.locked:hover {
-  transform: none;
+  transform: translateX(-50%);
 }
 
 .skill-node.cant-afford {
@@ -643,7 +668,7 @@ body.placement-mode::before {
   display: none;
 }
 
-/* Tree layout positions */
+/* Tree layout positions — 4 columns: left(12.5%) center-left(37.5%) center-right(62.5%) right(87.5%) */
 .skill-node.tier-1 {
   left: 50%;
   top: 20px;
@@ -657,13 +682,25 @@ body.placement-mode::before {
 }
 
 .skill-node.tier-2.left {
-  left: 22%;
+  left: 12.5%;
+  top: 180px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-2.center-left {
+  left: 37.5%;
+  top: 180px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-2.center-right {
+  left: 62.5%;
   top: 180px;
   transform: translateX(-50%);
 }
 
 .skill-node.tier-2.right {
-  left: 78%;
+  left: 87.5%;
   top: 180px;
   transform: translateX(-50%);
 }
@@ -675,13 +712,25 @@ body.placement-mode::before {
 }
 
 .skill-node.tier-3.left {
-  left: 22%;
+  left: 12.5%;
+  top: 340px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-3.center-left {
+  left: 37.5%;
+  top: 340px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-3.center-right {
+  left: 62.5%;
   top: 340px;
   transform: translateX(-50%);
 }
 
 .skill-node.tier-3.right {
-  left: 78%;
+  left: 87.5%;
   top: 340px;
   transform: translateX(-50%);
 }
@@ -692,46 +741,35 @@ body.placement-mode::before {
   transform: translateX(-50%);
 }
 
-.skill-node.tier-1:hover {
+.skill-node.tier-4.left {
+  left: 12.5%;
+  top: 500px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-4.center-left {
+  left: 37.5%;
+  top: 500px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-4.center-right {
+  left: 62.5%;
+  top: 500px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-4.right {
+  left: 87.5%;
+  top: 500px;
+  transform: translateX(-50%);
+}
+
+.skill-node:hover {
   transform: translateX(-50%) scale(1.08);
 }
 
-.skill-node.tier-2:hover {
-  transform: translateX(-50%) scale(1.08);
-}
-
-.skill-node.tier-2.left:hover {
-  transform: translateX(-50%) scale(1.08);
-}
-
-.skill-node.tier-2.right:hover {
-  transform: translateX(-50%) scale(1.08);
-}
-
-.skill-node.tier-3:hover {
-  transform: translateX(-50%) scale(1.08);
-}
-
-.skill-node.tier-3.left:hover {
-  transform: translateX(-50%) scale(1.08);
-}
-
-.skill-node.tier-3.right:hover {
-  transform: translateX(-50%) scale(1.08);
-}
-
-.skill-node.tier-4:hover {
-  transform: translateX(-50%) scale(1.08);
-}
-
-.skill-node.locked.tier-1:hover,
-.skill-node.locked.tier-2:hover,
-.skill-node.locked.tier-2.left:hover,
-.skill-node.locked.tier-2.right:hover,
-.skill-node.locked.tier-3:hover,
-.skill-node.locked.tier-3.left:hover,
-.skill-node.locked.tier-3.right:hover,
-.skill-node.locked.tier-4:hover {
+.skill-node.locked:hover {
   transform: translateX(-50%);
 }
 
@@ -1377,6 +1415,7 @@ body.placement-mode::before {
   border-top: 1px solid rgba(68, 136, 255, 0.25);
   font-weight: bold;
 }
+
 .shop-divider.hidden {
   display: none;
 }
@@ -1385,6 +1424,7 @@ body.placement-mode::before {
 #s2-harvest-item .item-name {
   color: #4488ff;
 }
+
 #s2-speed-item .item-icon,
 #s2-harvest-item .item-icon {
   background: rgba(68, 136, 255, 0.15);
@@ -1749,4 +1789,140 @@ body.placement-mode::before {
   50% {
     transform: scale(1.15);
   }
+}
+
+/* Power-Up Badge */
+#badge-powerup {
+  cursor: pointer;
+  border-color: rgba(255, 180, 60, 0.45);
+  box-shadow: 0 0 10px rgba(255, 180, 60, 0.2), inset 0 0 6px rgba(255, 180, 60, 0.04);
+}
+
+#badge-powerup:hover {
+  border-color: rgba(255, 180, 60, 0.75);
+  box-shadow: 0 0 16px rgba(255, 180, 60, 0.4), inset 0 0 8px rgba(255, 180, 60, 0.06);
+}
+
+#badge-powerup.has-items {
+  border-color: rgba(255, 200, 60, 0.65);
+  animation: powerupGlow 2s ease-in-out infinite;
+}
+
+@keyframes powerupGlow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(255, 180, 60, 0.2), inset 0 0 6px rgba(255, 180, 60, 0.04);
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(255, 180, 60, 0.5), inset 0 0 10px rgba(255, 180, 60, 0.08);
+  }
+}
+
+/* Power-Up Menu */
+#powerup-menu {
+  position: fixed;
+  bottom: 70px;
+  left: 20px;
+  width: 260px;
+  z-index: 120;
+  background: rgba(15, 12, 30, 0.95);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+}
+
+#powerup-menu.hidden {
+  display: none;
+}
+
+#powerup-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+  font-weight: bold;
+  color: #ffd700;
+  font-size: 14px;
+}
+
+#powerup-menu-header button {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#powerup-menu-items {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+#powerup-menu-empty {
+  padding: 20px 14px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 12px;
+}
+
+.powerup-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.powerup-item:last-child {
+  border-bottom: none;
+}
+
+.powerup-item-icon {
+  font-size: 22px;
+  width: 32px;
+  text-align: center;
+}
+
+.powerup-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.powerup-item-name {
+  font-size: 13px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.powerup-item-desc {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 1px;
+}
+
+.powerup-item-qty {
+  font-size: 11px;
+  color: rgba(255, 215, 0, 0.7);
+  margin-top: 2px;
+}
+
+.powerup-use-btn {
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 6px;
+  color: #ffd700;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.powerup-use-btn:hover {
+  background: rgba(255, 215, 0, 0.3);
 }

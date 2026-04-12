@@ -8,6 +8,7 @@ import { UI } from './UI.js';
 import { FloatingTextManager } from './FloatingText.js';
 import { RivalCEO } from './RivalCEO.js';
 import { BeehiveManager } from './BeehiveManager.js';
+import { CatManager } from './CatManager.js';
 
 const PIXEL_RATIO = 3;
 
@@ -29,6 +30,7 @@ export class Game {
     this.ui = new UI(this.state, this.droneManager, this.flowerManager, this.camera, this.renderer);
     this.rivalCEO = new RivalCEO(this.scene, this.world);
     this.beehive = new BeehiveManager(this.scene, this.state, this.world);
+    this.catManager = new CatManager(this.scene, this.state, this.world);
     this.droneManager.beehive = this.beehive;
 
     this.raycaster = new THREE.Raycaster();
@@ -61,6 +63,7 @@ export class Game {
     this.world.resetDocks();
     this.rivalCEO.reset?.();
     this.beehive.reset();
+    this.catManager.reset();
     this._applyPerkEffects();
   }
 
@@ -142,6 +145,15 @@ export class Game {
       }
     }
 
+    if (this.catManager.hasOffering) {
+      const catTargets = this.catManager.getClickTargets();
+      const catHits = this.raycaster.intersectObjects(catTargets);
+      if (catHits.length > 0) {
+        this.canvas.style.cursor = 'pointer';
+        return;
+      }
+    }
+
     if (!this.droneManager.placementMode && this.state.hasPerk('manualHarvest') && this.flowerManager.checkHover(this.raycaster)) {
       this.canvas.style.cursor = 'grab';
     } else {
@@ -183,6 +195,21 @@ export class Game {
     }
 
     this.ui.closeDronePopup();
+
+    if (this.catManager.hasOffering) {
+      const catTargets = this.catManager.getClickTargets();
+      const catHits = this.raycaster.intersectObjects(catTargets);
+      if (catHits.length > 0) {
+        const def = this.catManager.collectOffering();
+        if (def) {
+          const pos = this.catManager.mesh.position;
+          this.floatingText.spawn(pos.x, pos.y + 1.5, pos.z, '🎁 +1');
+          this.ui.showToast(`Collected ${def.label}!`);
+          this.ui.updatePowerupMenu();
+        }
+        return;
+      }
+    }
 
     if (this.rivalCEO.active) return;
     if (!this.state.hasPerk('manualHarvest')) return;
@@ -278,6 +305,7 @@ export class Game {
     this.flowerManager.update(gameDt);
     this.droneManager.update(gameDt);
     this.beehive.update(gameDt);
+    this.catManager.update(gameDt);
     this.floatingText.update(dt);
     this.ui.update(gameDt);
 

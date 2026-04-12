@@ -307,6 +307,10 @@
   </div>
 
   <div id="upgrade-badges">
+    <div class="badge hidden" id="badge-powerup">
+      🐱 <span id="powerup-count">0</span>
+      <div class="badge-tip">Cat Gifts</div>
+    </div>
     <div class="badge hidden" id="badge-spawn">
       ⚡ <span id="badge-spawn-val">0</span>
       <div class="badge-tip" id="badge-spawn-tip">Faster Spawns Lv.0</div>
@@ -335,6 +339,15 @@
       🔴 <span id="badge-drones-val">0</span>
       <div class="badge-tip" id="badge-drones-tip">Drones: 0</div>
     </div>
+  </div>
+
+  <div id="powerup-menu" class="hidden">
+    <div id="powerup-menu-header">
+      <span>🐱 Cat Gifts</span>
+      <button id="powerup-menu-close">✕</button>
+    </div>
+    <div id="powerup-menu-items"></div>
+    <div id="powerup-menu-empty">No power-ups yet — click your cats!</div>
   </div>
 
   <div id="speed-toggle" class="hidden">

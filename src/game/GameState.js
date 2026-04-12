@@ -42,16 +42,12 @@ export class GameState {
 
     this._initPrices(dev, d);
 
-    this._priceScales = {
-      'r1-drone': R1.price.scale,
-      'spawn-speed': FLOWERS.spawnUpgrade.price.scale,
-      'spawn-batch': FLOWERS.batchUpgrade.price.scale,
-    };
-
     this.skillPerks = {};
     for (const [id, node] of Object.entries(SKILL_TREE.nodes)) {
       this.skillPerks[id] = { cost: node.cost, owned: false, requires: node.requires };
     }
+
+    this.powerups = {};
 
     this._listeners = [];
     this._recentCollections = [];
@@ -63,23 +59,23 @@ export class GameState {
 
   _initPrices(dev, d) {
     this.prices = {
-      'r1-drone': dev ? d : R1.price.earlyPrices[0],
-      'r1-dock': dev ? d : R1.upgrades.dock.price.base,
-      'dock-skill-gen': dev ? d : R1.upgrades.dockSkillGen.price.base,
-      'drone-speed': dev ? d : R1.upgrades.propeller.price.levels[0],
-      'drone-harvest': dev ? d : R1.upgrades.harvester.price.levels[0],
-      'r1-ultimate': dev ? d : R1.upgrades.ultimate.price.base,
-      'spawn-speed': dev ? d : FLOWERS.spawnUpgrade.price.base,
-      'spawn-batch': dev ? d : FLOWERS.batchUpgrade.price.base,
-      'flower-value': dev ? d : FLOWERS.valueUpgrade.price.levels[0],
-      'flower-multi': dev ? d : FLOWERS.multiplierUpgrade.price.levels[0],
-      'mega-flower': dev ? d : (FLOWERS.megaUpgrade.price.levels || [FLOWERS.megaUpgrade.price.base])[0],
-      'mushroom': dev ? d : FLOWERS.mushroomUpgrade.price.levels[0],
-      'flower-capacity': dev ? d : FLOWERS.capacityUpgrade.price.levels[0],
-      's2-drone': dev ? d : S2.price.earlyPrices[0],
-      's2-speed': dev ? d : S2UPG.propeller.price.levels[0],
-      's2-harvest': dev ? d : S2UPG.harvester.price.levels[0],
-      's2-ultimate': dev ? d : S2UPG.ultimate.price.base,
+      'r1-drone':        dev ? d : R1.prices[0],
+      'r1-dock':         dev ? d : UPG.dock.price,
+      'dock-skill-gen':  dev ? d : UPG.dockSkillGen.price,
+      'drone-speed':     dev ? d : UPG.propeller.prices[0],
+      'drone-harvest':   dev ? d : UPG.harvester.prices[0],
+      'r1-ultimate':     dev ? d : UPG.ultimate.prices[0],
+      'spawn-speed':     dev ? d : FLOWERS.spawnUpgrade.prices[0],
+      'spawn-batch':     dev ? d : FLOWERS.batchUpgrade.prices[0],
+      'flower-value':    dev ? d : FLOWERS.valueUpgrade.prices[0],
+      'flower-multi':    dev ? d : FLOWERS.multiplierUpgrade.prices[0],
+      'mega-flower':     dev ? d : FLOWERS.megaUpgrade.prices[0],
+      'mushroom':        dev ? d : FLOWERS.mushroomUpgrade.prices[0],
+      'flower-capacity': dev ? d : FLOWERS.capacityUpgrade.prices[0],
+      's2-drone':        dev ? d : S2.prices[0],
+      's2-speed':        dev ? d : S2UPG.propeller.prices[0],
+      's2-harvest':      dev ? d : S2UPG.harvester.prices[0],
+      's2-ultimate':     dev ? d : S2UPG.ultimate.prices[0],
     };
   }
 
@@ -105,60 +101,14 @@ export class GameState {
     return this.flowers >= (this.prices[item] || Infinity);
   }
 
-  _scalePrice(key, level, maxLevel) {
+  _advancePrice(key, level, table) {
     if (this.devMode) return;
-    const scale = this._priceScales[key];
-    if (!scale) return;
-
-    if (Array.isArray(scale) && scale.length >= 4) {
-      const maxPrice = scale[3];
-      const current = this.prices[key];
-      const remaining = maxLevel - level;
-
-      if (current >= maxPrice) return;
-
-      if (current > maxPrice * 0.4 && remaining > 0) {
-        const step = Math.floor((maxPrice - current) / (remaining + 1));
-        this.prices[key] = current + Math.max(step, 1);
-        return;
-      }
-    }
-
-    const effective = this._effectiveScale(scale, level, maxLevel);
-    this.prices[key] = Math.floor(this.prices[key] * effective);
-  }
-
-  _scaleDronePrice() {
-    if (this.devMode) return;
-    const cfg = R1.price;
-    const n = this.dronesBought;
-    if (n < cfg.earlyPrices.length) {
-      this.prices['r1-drone'] = cfg.earlyPrices[n];
-    } else if (n < cfg.linearAfter) {
-      let price = cfg.earlyPrices[cfg.earlyPrices.length - 1];
-      for (let i = cfg.earlyPrices.length; i <= n; i++) {
-        price = Math.floor(price * cfg.scale);
-      }
-      this.prices['r1-drone'] = price;
-    } else {
-      let price = cfg.earlyPrices[cfg.earlyPrices.length - 1];
-      for (let i = cfg.earlyPrices.length; i < cfg.linearAfter; i++) {
-        price = Math.floor(price * cfg.scale);
-      }
-      const k = n - cfg.linearAfter + 1;
-      this.prices['r1-drone'] = price + cfg.linearStep * k;
+    if (level < table.length) {
+      this.prices[key] = table[level];
     }
   }
 
-  _effectiveScale(scale, level, maxLevel) {
-    if (typeof scale === 'number') return scale;
-    const [low, peak, late] = scale;
-    const t = level / Math.max(maxLevel, 1);
-    const bell = Math.sin(t * Math.PI);
-    return t <= 0.5
-      ? low + (peak - low) * bell
-      : late + (peak - late) * bell;
-  }
+  // --- Drones ---
 
   buyDrone() {
     const cost = this.prices['r1-drone'];
@@ -166,7 +116,7 @@ export class GameState {
     this.lastDroneCost = cost;
     this.dronesOwned++;
     this.dronesBought++;
-    this._scaleDronePrice();
+    this._advancePrice('r1-drone', this.dronesBought, R1.prices);
     this._notify();
     return true;
   }
@@ -177,23 +127,9 @@ export class GameState {
     if (!this.spendFlowers(cost)) return false;
     this.lastS2Cost = cost;
     this.s2DronesOwned++;
-    this._scaleS2Price();
+    this._advancePrice('s2-drone', this.s2DronesOwned, S2.prices);
     this._notify();
     return true;
-  }
-
-  _scaleS2Price() {
-    if (this.devMode) return;
-    const cfg = S2.price;
-    const n = this.s2DronesOwned;
-    if (n < cfg.earlyPrices.length) {
-      this.prices['s2-drone'] = cfg.earlyPrices[n];
-    } else if (n < cfg.linearAfter) {
-      this.prices['s2-drone'] = Math.floor(this.prices['s2-drone'] * cfg.scale);
-    } else {
-      const k = n - cfg.linearAfter + 1;
-      this.prices['s2-drone'] = this.prices['s2-drone'] + cfg.linearStep * k;
-    }
   }
 
   buyGlobalDock() {
@@ -238,161 +174,140 @@ export class GameState {
   }
 
   buyGlobalSpeed() {
-    if (this.droneSpeedLevel >= UPG.propeller.maxLevel) return false;
+    const max = UPG.propeller.prices.length;
+    if (this.droneSpeedLevel >= max) return false;
     const cost = this.prices['drone-speed'];
     if (!this.spendFlowers(cost)) return false;
     this.droneSpeedLevel++;
-    if (!this.devMode && this.droneSpeedLevel < UPG.propeller.maxLevel) {
-      this.prices['drone-speed'] = UPG.propeller.price.levels[this.droneSpeedLevel];
-    }
+    this._advancePrice('drone-speed', this.droneSpeedLevel, UPG.propeller.prices);
     this._notify();
     return true;
   }
 
   buyGlobalHarvest() {
-    if (this.droneHarvestLevel >= UPG.harvester.maxLevel) return false;
+    const max = UPG.harvester.prices.length;
+    if (this.droneHarvestLevel >= max) return false;
     const cost = this.prices['drone-harvest'];
     if (!this.spendFlowers(cost)) return false;
     this.droneHarvestLevel++;
-    if (!this.devMode && this.droneHarvestLevel < UPG.harvester.maxLevel) {
-      this.prices['drone-harvest'] = UPG.harvester.price.levels[this.droneHarvestLevel];
-    }
+    this._advancePrice('drone-harvest', this.droneHarvestLevel, UPG.harvester.prices);
     this._notify();
     return true;
   }
 
   buyS2Speed() {
-    if (this.s2SpeedLevel >= S2UPG.propeller.maxLevel) return false;
+    const max = S2UPG.propeller.prices.length;
+    if (this.s2SpeedLevel >= max) return false;
     const cost = this.prices['s2-speed'];
     if (!this.spendFlowers(cost)) return false;
     this.s2SpeedLevel++;
-    if (!this.devMode && this.s2SpeedLevel < S2UPG.propeller.maxLevel) {
-      this.prices['s2-speed'] = S2UPG.propeller.price.levels[this.s2SpeedLevel];
-    }
+    this._advancePrice('s2-speed', this.s2SpeedLevel, S2UPG.propeller.prices);
     this._notify();
     return true;
   }
 
   buyS2Harvest() {
-    if (this.s2HarvestLevel >= S2UPG.harvester.maxLevel) return false;
+    const max = S2UPG.harvester.prices.length;
+    if (this.s2HarvestLevel >= max) return false;
     const cost = this.prices['s2-harvest'];
     if (!this.spendFlowers(cost)) return false;
     this.s2HarvestLevel++;
-    if (!this.devMode && this.s2HarvestLevel < S2UPG.harvester.maxLevel) {
-      this.prices['s2-harvest'] = S2UPG.harvester.price.levels[this.s2HarvestLevel];
-    }
+    this._advancePrice('s2-harvest', this.s2HarvestLevel, S2UPG.harvester.prices);
     this._notify();
     return true;
   }
 
+  // --- Flower upgrades ---
+
   buySpawnSpeed() {
-    const su = FLOWERS.spawnUpgrade;
-    if (this.spawnSpeedLevel >= su.maxLevel) return false;
+    const table = FLOWERS.spawnUpgrade.prices;
+    if (this.spawnSpeedLevel >= table.length) return false;
     const cost = this.prices['spawn-speed'];
     if (!this.spendFlowers(cost)) return false;
     this.spawnSpeedLevel++;
-    this._scalePrice('spawn-speed', this.spawnSpeedLevel, FLOWERS.spawnUpgrade.maxLevel);
+    this._advancePrice('spawn-speed', this.spawnSpeedLevel, table);
     this._notify();
     return true;
   }
 
   getSpawnSpeedMaxLevel() {
-    return FLOWERS.spawnUpgrade.maxLevel;
+    return FLOWERS.spawnUpgrade.prices.length;
+  }
+
+  getSpawnInterval() {
+    if (this.spawnSpeedLevel === 0) return FLOWERS.baseSpawnInterval;
+    return FLOWERS.spawnUpgrade.intervals[this.spawnSpeedLevel - 1];
   }
 
   buySpawnBatch() {
-    const bu = FLOWERS.batchUpgrade;
-    if (this.spawnBatchLevel >= bu.maxLevel) return false;
+    const table = FLOWERS.batchUpgrade.prices;
+    if (this.spawnBatchLevel >= table.length) return false;
     const cost = this.prices['spawn-batch'];
     if (!this.spendFlowers(cost)) return false;
     this.spawnBatchLevel++;
-    this._scalePrice('spawn-batch', this.spawnBatchLevel, FLOWERS.batchUpgrade.maxLevel);
+    this._advancePrice('spawn-batch', this.spawnBatchLevel, table);
     this._notify();
     return true;
   }
 
   getSpawnBatchMaxLevel() {
-    return FLOWERS.batchUpgrade.maxLevel;
+    return FLOWERS.batchUpgrade.prices.length;
   }
 
   getSpawnBatchCount() {
-    const bu = FLOWERS.batchUpgrade;
-    const lvl = this.spawnBatchLevel;
-    if (lvl < bu.guaranteed.length) return bu.guaranteed[lvl];
-
-    const base = bu.postGuaranteedMin;
-    const extraSlots = bu.maxCount - base;
-    const p = ((lvl - bu.guaranteed.length + 1) / (bu.maxLevel - bu.guaranteed.length + 1)) * bu.maxRollProb;
-    let count = base;
-    for (let i = 0; i < extraSlots; i++) {
-      if (Math.random() < p) count++;
-    }
-    return count;
+    if (this.spawnBatchLevel === 0) return 1;
+    const expected = FLOWERS.batchUpgrade.expected[this.spawnBatchLevel - 1];
+    const base = Math.floor(expected);
+    const frac = expected - base;
+    return Math.random() < frac ? base + 1 : base;
   }
 
   getSpawnBatchExpected() {
-    const bu = FLOWERS.batchUpgrade;
-    const lvl = this.spawnBatchLevel;
-    if (lvl < bu.guaranteed.length) return bu.guaranteed[lvl];
-
-    const base = bu.postGuaranteedMin;
-    const extraSlots = bu.maxCount - base;
-    const p = ((lvl - bu.guaranteed.length + 1) / (bu.maxLevel - bu.guaranteed.length + 1)) * bu.maxRollProb;
-    return Math.round((base + extraSlots * p) * 10) / 10;
+    if (this.spawnBatchLevel === 0) return 1;
+    return FLOWERS.batchUpgrade.expected[this.spawnBatchLevel - 1];
   }
 
   buyFlowerValue() {
-    const vu = FLOWERS.valueUpgrade;
-    if (this.flowerValueLevel >= vu.maxLevel) return false;
+    const table = FLOWERS.valueUpgrade.prices;
+    if (this.flowerValueLevel >= table.length) return false;
     const cost = this.prices['flower-value'];
     if (!this.spendFlowers(cost)) return false;
     this.flowerValueLevel++;
-    if (!this.devMode) {
-      const levels = vu.price.levels;
-      if (this.flowerValueLevel < levels.length) {
-        this.prices['flower-value'] = levels[this.flowerValueLevel];
-      }
-    }
+    this._advancePrice('flower-value', this.flowerValueLevel, table);
     this._notify();
     return true;
   }
 
   getFlowerValueMaxLevel() {
-    return FLOWERS.valueUpgrade.maxLevel;
+    return FLOWERS.valueUpgrade.prices.length;
   }
 
   getFlowerBaseValue() {
-    const vu = FLOWERS.valueUpgrade;
-    const base = this.hasPerk('bloomBoost') ? 5 : vu.baseValue;
-    const t = this.flowerValueLevel / vu.maxLevel;
-    const curved = Math.pow(t, vu.curve || 1);
-    return Math.max(base + this.flowerValueLevel, Math.round(base + (vu.maxValue - base) * curved));
+    if (this.flowerValueLevel === 0) {
+      return this.hasPerk('bloomBoost') ? 5 : 1;
+    }
+    const val = FLOWERS.valueUpgrade.values[this.flowerValueLevel - 1];
+    return this.hasPerk('bloomBoost') ? Math.max(val, 5) : val;
   }
 
   buyFlowerMultiplier() {
-    const mu = FLOWERS.multiplierUpgrade;
-    if (this.flowerMultiplierLevel >= mu.maxLevel) return false;
+    const table = FLOWERS.multiplierUpgrade.prices;
+    if (this.flowerMultiplierLevel >= table.length) return false;
     const cost = this.prices['flower-multi'];
     if (!this.spendFlowers(cost)) return false;
     this.flowerMultiplierLevel++;
-    if (!this.devMode) {
-      const levels = mu.price.levels;
-      if (this.flowerMultiplierLevel < levels.length) {
-        this.prices['flower-multi'] = levels[this.flowerMultiplierLevel];
-      }
-    }
+    this._advancePrice('flower-multi', this.flowerMultiplierLevel, table);
     this._notify();
     return true;
   }
 
   getFlowerMultiplierMaxLevel() {
-    return FLOWERS.multiplierUpgrade.maxLevel;
+    return FLOWERS.multiplierUpgrade.prices.length;
   }
 
   getFlowerMultiplier() {
-    const mu = FLOWERS.multiplierUpgrade;
-    const t = this.flowerMultiplierLevel / mu.maxLevel;
-    return Math.round((mu.baseMultiplier + (mu.maxMultiplier - mu.baseMultiplier) * t) * 10) / 10;
+    if (this.flowerMultiplierLevel === 0) return 1;
+    return FLOWERS.multiplierUpgrade.multipliers[this.flowerMultiplierLevel - 1];
   }
 
   getCollectionValue(baseValue) {
@@ -400,47 +315,49 @@ export class GameState {
   }
 
   buyMegaFlower() {
-    const mu = FLOWERS.megaUpgrade;
-    if (this.megaFlowerLevel >= mu.maxLevel) return false;
+    const table = FLOWERS.megaUpgrade.prices;
+    if (this.megaFlowerLevel >= table.length) return false;
     const cost = this.prices['mega-flower'];
     if (!this.spendFlowers(cost)) return false;
     this.megaFlowerLevel++;
-    if (!this.devMode) {
-      const levels = FLOWERS.megaUpgrade.price.levels;
-      if (levels && this.megaFlowerLevel < levels.length) {
-        this.prices['mega-flower'] = levels[this.megaFlowerLevel];
-      }
-    }
+    this._advancePrice('mega-flower', this.megaFlowerLevel, table);
     this._notify();
     return true;
   }
 
   getMegaMaxLevel() {
-    return FLOWERS.megaUpgrade.maxLevel;
+    return FLOWERS.megaUpgrade.prices.length;
+  }
+
+  getMegaFlowerChance() {
+    if (this.megaFlowerLevel === 0) return 0;
+    let chance = FLOWERS.megaUpgrade.chances[this.megaFlowerLevel - 1];
+    if (this.hasPerk('megaChance')) chance += 0.2;
+    return chance;
+  }
+
+  getMegaFlowerValue() {
+    return FLOWERS.megaUpgrade.megaValue;
   }
 
   buyMushroom() {
-    const mu = FLOWERS.mushroomUpgrade;
-    if (this.mushroomLevel >= mu.maxLevel) return false;
+    const table = FLOWERS.mushroomUpgrade.prices;
+    if (this.mushroomLevel >= table.length) return false;
     const cost = this.prices['mushroom'];
     if (!this.spendFlowers(cost)) return false;
     this.mushroomLevel++;
-    if (!this.devMode) {
-      const levels = mu.price.levels;
-      if (this.mushroomLevel < levels.length) {
-        this.prices['mushroom'] = levels[this.mushroomLevel];
-      }
-    }
+    this._advancePrice('mushroom', this.mushroomLevel, table);
     this._notify();
     return true;
   }
 
   getMushroomMaxLevel() {
-    return FLOWERS.mushroomUpgrade.maxLevel;
+    return FLOWERS.mushroomUpgrade.prices.length;
   }
 
   getMushroomChance() {
-    return this.mushroomLevel * FLOWERS.mushroomUpgrade.chancePerLevel;
+    if (this.mushroomLevel === 0) return 0;
+    return FLOWERS.mushroomUpgrade.chances[this.mushroomLevel - 1];
   }
 
   getMushroomFlowerValue() {
@@ -463,45 +380,45 @@ export class GameState {
   }
 
   buyCapacity() {
-    const cu = FLOWERS.capacityUpgrade;
-    if (this.capacityLevel >= cu.maxLevel) return false;
+    const table = FLOWERS.capacityUpgrade.prices;
+    if (this.capacityLevel >= table.length) return false;
     const cost = this.prices['flower-capacity'];
     if (!this.spendFlowers(cost)) return false;
     this.capacityLevel++;
-    if (!this.devMode) {
-      const levels = cu.price.levels;
-      if (this.capacityLevel < levels.length) {
-        this.prices['flower-capacity'] = levels[this.capacityLevel];
-      }
-    }
+    this._advancePrice('flower-capacity', this.capacityLevel, table);
     this._notify();
     return true;
   }
 
   getCapacityMaxLevel() {
-    return FLOWERS.capacityUpgrade.maxLevel;
+    return FLOWERS.capacityUpgrade.prices.length;
   }
 
   getCapacityBonus() {
-    return this.capacityLevel * FLOWERS.capacityUpgrade.bonusPerLevel;
+    if (this.capacityLevel === 0) return 0;
+    return FLOWERS.capacityUpgrade.bonuses[this.capacityLevel - 1];
   }
 
-  getSpawnInterval() {
-    const su = FLOWERS.spawnUpgrade;
-    const range = FLOWERS.baseSpawnInterval - su.minInterval;
-    const t = Math.min(this.spawnSpeedLevel / su.maxLevel, 1);
-    return FLOWERS.baseSpawnInterval - range * t;
+  // --- Powerups ---
+
+  collectPowerup(id) {
+    this.powerups[id] = (this.powerups[id] || 0) + 1;
+    this._notify();
   }
 
-  getMegaFlowerChance() {
-    let chance = this.megaFlowerLevel * FLOWERS.megaUpgrade.chancePerLevel;
-    if (this.hasPerk('megaChance')) chance += 0.2;
-    return chance;
+  usePowerup(id) {
+    if (!this.powerups[id] || this.powerups[id] <= 0) return false;
+    this.powerups[id]--;
+    if (this.powerups[id] <= 0) delete this.powerups[id];
+    this._notify();
+    return true;
   }
 
-  getMegaFlowerValue() {
-    return FLOWERS.megaUpgrade.megaValue;
+  getPowerupCount(id) {
+    return this.powerups[id] || 0;
   }
+
+  // --- Stats ---
 
   computeFlowersPerSecond() {
     const now = performance.now();
@@ -627,6 +544,7 @@ export class GameState {
           .filter(([, v]) => v.owned)
           .map(([k]) => [k, 1])
       ),
+      pup: this.powerups,
     };
     return btoa(JSON.stringify(data));
   }
@@ -636,7 +554,6 @@ export class GameState {
       const data = JSON.parse(atob(encoded));
       if (!data) return false;
 
-      // v1 saves: skill data only
       if (data.v === 1) {
         if (typeof data.sp === 'number') this.skillPoints = data.sp;
         if (typeof data.sc === 'number') this.skillCurrency = data.sc;
@@ -651,7 +568,6 @@ export class GameState {
         return true;
       }
 
-      // v2 saves: full state
       if (data.v === 2) {
         if (typeof data.fl === 'number') this.flowers = data.fl;
         if (typeof data.tfc === 'number') this.totalFlowersCollected = data.tfc;
@@ -683,6 +599,9 @@ export class GameState {
           for (const id of Object.keys(data.perks)) {
             if (this.skillPerks[id]) this.skillPerks[id].owned = true;
           }
+        }
+        if (data.pup && typeof data.pup === 'object') {
+          this.powerups = { ...data.pup };
         }
         this._notify();
         this._onImport?.();

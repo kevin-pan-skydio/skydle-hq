@@ -501,7 +501,7 @@ body.placement-mode::before {
 
 #skill-tree-body {
   position: relative;
-  height: 520px;
+  height: 580px;
   overflow: auto;
   cursor: grab;
   scrollbar-width: thin;
@@ -553,8 +553,8 @@ body.placement-mode::before {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  min-height: 650px;
+  width: 115%;
+  min-height: 700px;
   z-index: 2;
 }
 
@@ -731,6 +731,12 @@ body.placement-mode::before {
 
 .skill-node.tier-3.right {
   left: 87.5%;
+  top: 340px;
+  transform: translateX(-50%);
+}
+
+.skill-node.tier-3.far-right {
+  left: 100%;
   top: 340px;
   transform: translateX(-50%);
 }
@@ -2054,4 +2060,68 @@ body.placement-mode::before {
 
 .powerup-use-btn:hover {
   background: rgba(255, 215, 0, 0.3);
+}
+
+#whiskey-focus-bar {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(30, 15, 0, 0.85);
+  border: 1px solid rgba(255, 180, 50, 0.5);
+  border-radius: 12px;
+  padding: 6px 16px;
+  z-index: 200;
+  font-size: 13px;
+  color: #ffc040;
+  box-shadow: 0 0 16px rgba(255, 180, 50, 0.25);
+  animation: whiskey-pulse 1.5s ease-in-out infinite;
+}
+
+#whiskey-focus-bar.hidden {
+  display: none;
+}
+
+#whiskey-focus-icon {
+  font-size: 18px;
+}
+
+#whiskey-focus-label {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+#whiskey-focus-timer-wrap {
+  width: 100px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+#whiskey-focus-timer-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffc040, #ffdd88);
+  border-radius: 3px;
+  transition: width 0.25s linear;
+}
+
+#whiskey-focus-time {
+  font-variant-numeric: tabular-nums;
+  min-width: 24px;
+}
+
+@keyframes whiskey-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 16px rgba(255, 180, 50, 0.25);
+  }
+
+  50% {
+    box-shadow: 0 0 24px rgba(255, 180, 50, 0.45);
+  }
 }

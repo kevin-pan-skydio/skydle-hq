@@ -277,6 +277,20 @@
             <span class="cost" id="mushroom-cost">500,000 🌸</span>
           </button>
         </div>
+
+        <div class="shop-divider hidden" id="cat-upgrades-divider">── Cat Upgrades ──</div>
+
+        <div class="shop-item hidden" id="cat-cooldown-item">
+          <div class="item-icon">🐱</div>
+          <div class="item-info">
+            <div class="item-name">Cat Regeneration</div>
+            <div class="item-desc">Cats offer gifts more frequently</div>
+            <div class="item-owned" id="cat-cooldown-level">0/3 — 3:00 cooldown</div>
+          </div>
+          <button class="buy-btn" id="buy-cat-cooldown">
+            <span class="cost" id="cat-cooldown-cost">1,000 🌸</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -360,6 +374,15 @@
       <div id="rival-modal-title">A rival CEO is giving a keynote!</div>
       <div id="rival-modal-sub">All operations slowed by 75% · Manual harvest disabled</div>
     </div>
+  </div>
+
+  <div id="whiskey-focus-bar" class="hidden">
+    <span id="whiskey-focus-icon">⭐</span>
+    <span id="whiskey-focus-label">Whiskey's Focus</span>
+    <div id="whiskey-focus-timer-wrap">
+      <div id="whiskey-focus-timer-fill"></div>
+    </div>
+    <span id="whiskey-focus-time">15s</span>
   </div>
 
   <div id="toast-container"></div>

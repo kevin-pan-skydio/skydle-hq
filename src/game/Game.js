@@ -32,6 +32,7 @@ export class Game {
     this.beehive = new BeehiveManager(this.scene, this.state, this.world);
     this.cats = [
       new CatManager(this.scene, this.state, this.world, 'felix'),
+      new CatManager(this.scene, this.state, this.world, 'whiskey'),
       new CatManager(this.scene, this.state, this.world, 'luna'),
     ];
     this.droneManager.beehive = this.beehive;
@@ -228,15 +229,17 @@ export class Game {
           this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, '+★' + xp);
         } else {
           const val = this.state.getMushroomFlowerValue();
+          const wf = this.state.isWhiskeyFocusActive();
           this.state.addFlowers(val);
-          this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, '+' + val);
+          this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, wf ? '+★' + val : '+' + val);
         }
       } else {
         let val = this.state.getCollectionValue(flowerHit.value);
         if (this.beehive.isInRadius(flowerHit.x, flowerHit.z)) val *= 2;
         if (this.state.hasPerk('goldenFlowers')) val *= 3;
+        const wf = this.state.isWhiskeyFocusActive();
         this.state.addFlowers(val);
-        this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, '+' + val);
+        this.floatingText.spawn(flowerHit.x, flowerHit.y, flowerHit.z, wf ? '+★' + val : '+' + val);
       }
     }
   }

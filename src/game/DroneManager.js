@@ -756,14 +756,16 @@ export class DroneManager {
                 this.floatingText.spawn(c.x, c.y, c.z, '+★' + xp);
               } else {
                 const val = this.state.getMushroomFlowerValue();
+                const wf = this.state.isWhiskeyFocusActive();
                 this.state.addFlowers(val);
-                this.floatingText.spawn(c.x, c.y, c.z, '+' + val);
+                this.floatingText.spawn(c.x, c.y, c.z, wf ? '+★' + val : '+' + val);
               }
             } else {
               let val = this.state.getCollectionValue(c.value);
               if (this.beehive?.isInRadius(c.x, c.z)) val *= 2;
+              const wf = this.state.isWhiskeyFocusActive();
               this.state.addFlowers(val);
-              this.floatingText.spawn(c.x, c.y, c.z, '+' + val);
+              this.floatingText.spawn(c.x, c.y, c.z, wf ? '+★' + val : '+' + val);
             }
           }
         }
@@ -864,14 +866,16 @@ export class DroneManager {
             this.floatingText.spawn(collected.x, collected.y, collected.z, '+★' + xp);
           } else {
             const val = this.state.getMushroomFlowerValue();
+            const wf = this.state.isWhiskeyFocusActive();
             this.state.addFlowers(val);
-            this.floatingText.spawn(collected.x, collected.y, collected.z, '+' + val);
+            this.floatingText.spawn(collected.x, collected.y, collected.z, wf ? '+★' + val : '+' + val);
           }
         } else {
           harvestVal = this.state.getCollectionValue(collected.value);
           if (this.beehive?.isInRadius(collected.x, collected.z)) harvestVal *= 2;
+          const wf = this.state.isWhiskeyFocusActive();
           this.state.addFlowers(harvestVal);
-          this.floatingText.spawn(collected.x, collected.y, collected.z, '+' + harvestVal);
+          this.floatingText.spawn(collected.x, collected.y, collected.z, wf ? '+★' + harvestVal : '+' + harvestVal);
         }
         drone.totalHarvested++;
         drone.totalValueHarvested += harvestVal;

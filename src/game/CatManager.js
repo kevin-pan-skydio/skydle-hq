@@ -244,7 +244,147 @@ function buildLunaModel() {
   return parts;
 }
 
-const MODEL_BUILDERS = { felix: buildFelixModel, luna: buildLunaModel };
+// Whiskey palette (brown tabby Maine Coon)
+const BROWN = 0x8b5e3c;
+const DARK_BROWN = 0x5a3a22;
+const GOLDEN = 0xc49550;
+const WARM_CREAM = 0xf0dcc0;
+const EYE_TEAL = 0x55aa88;
+
+function buildWhiskeyModel() {
+  const parts = [];
+
+  // Body — golden-brown, fluffy (slightly wider to suggest fluffiness)
+  const body = new THREE.BoxGeometry(0.38 * S, 0.30 * S, 0.58 * S);
+  body.translate(0, 0.28 * S, 0);
+  parts.push(vc(body, GOLDEN));
+
+  // Dark tabby stripes on back
+  for (let i = -2; i <= 2; i++) {
+    const stripe = new THREE.BoxGeometry(0.39 * S, 0.03 * S, 0.07 * S);
+    stripe.translate(0, 0.44 * S, i * 0.11 * S);
+    parts.push(vc(stripe, DARK_BROWN));
+  }
+
+  // Fluffy chest ruff — warm cream, extends forward
+  const ruff = new THREE.BoxGeometry(0.30 * S, 0.16 * S, 0.20 * S);
+  ruff.translate(0, 0.22 * S, -0.22 * S);
+  parts.push(vc(ruff, WARM_CREAM));
+
+  // White belly
+  const belly = new THREE.BoxGeometry(0.26 * S, 0.06 * S, 0.44 * S);
+  belly.translate(0, 0.14 * S, 0);
+  parts.push(vc(belly, WARM_CREAM));
+
+  // Head — brown with tabby markings
+  const head = new THREE.BoxGeometry(0.34 * S, 0.30 * S, 0.30 * S);
+  head.translate(0, 0.40 * S, -0.40 * S);
+  parts.push(vc(head, BROWN));
+
+  // Tabby "M" marking on forehead
+  const markCenter = new THREE.BoxGeometry(0.06 * S, 0.04 * S, 0.01 * S);
+  markCenter.translate(0, 0.52 * S, -0.55 * S);
+  parts.push(vc(markCenter, DARK_BROWN));
+  const markL = new THREE.BoxGeometry(0.04 * S, 0.06 * S, 0.01 * S);
+  markL.translate(-0.07 * S, 0.51 * S, -0.55 * S);
+  parts.push(vc(markL, DARK_BROWN));
+  const markR = new THREE.BoxGeometry(0.04 * S, 0.06 * S, 0.01 * S);
+  markR.translate(0.07 * S, 0.51 * S, -0.55 * S);
+  parts.push(vc(markR, DARK_BROWN));
+
+  // White muzzle/chin
+  const muzzle = new THREE.BoxGeometry(0.16 * S, 0.10 * S, 0.06 * S);
+  muzzle.translate(0, 0.32 * S, -0.55 * S);
+  parts.push(vc(muzzle, WARM_CREAM));
+
+  // Fluffy cheeks (wider than Felix — Maine Coon face)
+  const cheekL = new THREE.BoxGeometry(0.10 * S, 0.10 * S, 0.06 * S);
+  cheekL.translate(-0.15 * S, 0.34 * S, -0.53 * S);
+  parts.push(vc(cheekL, GOLDEN));
+  const cheekR = new THREE.BoxGeometry(0.10 * S, 0.10 * S, 0.06 * S);
+  cheekR.translate(0.15 * S, 0.34 * S, -0.53 * S);
+  parts.push(vc(cheekR, GOLDEN));
+
+  // Tall tufted ears — brown with pink insides
+  const earL = new THREE.BoxGeometry(0.10 * S, 0.14 * S, 0.06 * S);
+  earL.translate(-0.13 * S, 0.60 * S, -0.40 * S);
+  parts.push(vc(earL, BROWN));
+  const earR = new THREE.BoxGeometry(0.10 * S, 0.14 * S, 0.06 * S);
+  earR.translate(0.13 * S, 0.60 * S, -0.40 * S);
+  parts.push(vc(earR, BROWN));
+
+  // Ear tufts (darker tips — Maine Coon signature)
+  const tuftL = new THREE.BoxGeometry(0.04 * S, 0.05 * S, 0.03 * S);
+  tuftL.translate(-0.13 * S, 0.68 * S, -0.40 * S);
+  parts.push(vc(tuftL, DARK_BROWN));
+  const tuftR = new THREE.BoxGeometry(0.04 * S, 0.05 * S, 0.03 * S);
+  tuftR.translate(0.13 * S, 0.68 * S, -0.40 * S);
+  parts.push(vc(tuftR, DARK_BROWN));
+
+  const earInL = new THREE.BoxGeometry(0.05 * S, 0.07 * S, 0.02 * S);
+  earInL.translate(-0.13 * S, 0.59 * S, -0.43 * S);
+  parts.push(vc(earInL, PINK));
+  const earInR = new THREE.BoxGeometry(0.05 * S, 0.07 * S, 0.02 * S);
+  earInR.translate(0.13 * S, 0.59 * S, -0.43 * S);
+  parts.push(vc(earInR, PINK));
+
+  // Green eyes
+  const eyeL = new THREE.BoxGeometry(0.06 * S, 0.06 * S, 0.02 * S);
+  eyeL.translate(-0.08 * S, 0.42 * S, -0.55 * S);
+  parts.push(vc(eyeL, EYE_TEAL));
+  const eyeR = new THREE.BoxGeometry(0.06 * S, 0.06 * S, 0.02 * S);
+  eyeR.translate(0.08 * S, 0.42 * S, -0.55 * S);
+  parts.push(vc(eyeR, EYE_TEAL));
+
+  const pupilL = new THREE.BoxGeometry(0.025 * S, 0.05 * S, 0.01 * S);
+  pupilL.translate(-0.08 * S, 0.42 * S, -0.56 * S);
+  parts.push(vc(pupilL, PUPIL));
+  const pupilR = new THREE.BoxGeometry(0.025 * S, 0.05 * S, 0.01 * S);
+  pupilR.translate(0.08 * S, 0.42 * S, -0.56 * S);
+  parts.push(vc(pupilR, PUPIL));
+
+  // Pink nose
+  const nose = new THREE.BoxGeometry(0.04 * S, 0.03 * S, 0.02 * S);
+  nose.translate(0, 0.36 * S, -0.55 * S);
+  parts.push(vc(nose, NOSE_PINK));
+
+  // Legs — brown with dark paws
+  const legGeo = () => new THREE.BoxGeometry(0.10 * S, 0.16 * S, 0.10 * S);
+  const fl = legGeo(); fl.translate(-0.12 * S, 0.08 * S, -0.20 * S);
+  parts.push(vc(fl, BROWN));
+  const fr = legGeo(); fr.translate(0.12 * S, 0.08 * S, -0.20 * S);
+  parts.push(vc(fr, BROWN));
+  const bl = legGeo(); bl.translate(-0.12 * S, 0.08 * S, 0.20 * S);
+  parts.push(vc(bl, BROWN));
+  const br = legGeo(); br.translate(0.12 * S, 0.08 * S, 0.20 * S);
+  parts.push(vc(br, BROWN));
+
+  // Dark tabby paws
+  const pawGeo = () => new THREE.BoxGeometry(0.10 * S, 0.04 * S, 0.12 * S);
+  const pfl = pawGeo(); pfl.translate(-0.12 * S, 0.02 * S, -0.20 * S);
+  parts.push(vc(pfl, DARK_BROWN));
+  const pfr = pawGeo(); pfr.translate(0.12 * S, 0.02 * S, -0.20 * S);
+  parts.push(vc(pfr, DARK_BROWN));
+  const pbl = pawGeo(); pbl.translate(-0.12 * S, 0.02 * S, 0.20 * S);
+  parts.push(vc(pbl, DARK_BROWN));
+  const pbr = pawGeo(); pbr.translate(0.12 * S, 0.02 * S, 0.20 * S);
+  parts.push(vc(pbr, DARK_BROWN));
+
+  // Big fluffy tail — golden with dark tip
+  const t1 = new THREE.BoxGeometry(0.10 * S, 0.10 * S, 0.22 * S);
+  t1.translate(0, 0.34 * S, 0.38 * S);
+  parts.push(vc(t1, GOLDEN));
+  const t2 = new THREE.BoxGeometry(0.09 * S, 0.09 * S, 0.18 * S);
+  t2.translate(0, 0.44 * S, 0.52 * S);
+  parts.push(vc(t2, BROWN));
+  const t3 = new THREE.BoxGeometry(0.08 * S, 0.08 * S, 0.14 * S);
+  t3.translate(0, 0.56 * S, 0.60 * S);
+  parts.push(vc(t3, DARK_BROWN));
+
+  return parts;
+}
+
+const MODEL_BUILDERS = { felix: buildFelixModel, luna: buildLunaModel, whiskey: buildWhiskeyModel };
 
 function buildCatMesh(catKey) {
   const group = new THREE.Group();
@@ -328,7 +468,7 @@ export class CatManager {
 
     this._offerSprite = null;
     this._offerGlow = null;
-    this._offerCooldown = cfg.powerup.offerInterval;
+    this._offerCooldown = this.state.getCatOfferInterval();
 
     this._computeBounds();
   }
@@ -386,7 +526,7 @@ export class CatManager {
     if (this._offerCooldown <= 0) {
       this._behavior = STATE_OFFERING;
       this._stateTimer = this._pup.offerDuration;
-      this._offerCooldown = this._pup.offerInterval;
+      this._offerCooldown = this.state.getCatOfferInterval();
       this._showOfferSprite();
       return;
     }
@@ -477,7 +617,7 @@ export class CatManager {
 
   reset() {
     this.despawn();
-    this._offerCooldown = this._pup.offerInterval;
+    this._offerCooldown = this.state.getCatOfferInterval();
   }
 
   update(dt) {

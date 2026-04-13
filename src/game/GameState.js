@@ -39,6 +39,7 @@ export class GameState {
     this.megaFlowerLevel = 0;
     this.mushroomLevel = 0;
     this.capacityLevel = 0;
+    this.catCooldownLevel = 0;
 
     this._initPrices(dev, d);
 
@@ -48,6 +49,8 @@ export class GameState {
     }
 
     this.powerups = {};
+
+    this.whiskeyFocusEnd = 0;
 
     this._listeners = [];
     this._recentCollections = [];
@@ -76,6 +79,7 @@ export class GameState {
       's2-speed':        dev ? d : S2UPG.propeller.prices[0],
       's2-harvest':      dev ? d : S2UPG.harvester.prices[0],
       's2-ultimate':     dev ? d : S2UPG.ultimate.prices[0],
+      'cat-cooldown':    dev ? d : CONFIG.cats.cooldownUpgrade.prices[0],
     };
   }
 
@@ -83,7 +87,22 @@ export class GameState {
     for (const fn of this._listeners) fn(this);
   }
 
+  isWhiskeyFocusActive() {
+    return performance.now() < this.whiskeyFocusEnd;
+  }
+
+  activateWhiskeyFocus(durationSec) {
+    this.whiskeyFocusEnd = performance.now() + durationSec * 1000;
+    this._notify();
+  }
+
   addFlowers(n) {
+    if (this.isWhiskeyFocusActive()) {
+      this.addSkillXp(n);
+      this._recentCollections.push({ amount: n, time: performance.now() });
+      this._notify();
+      return;
+    }
     this.flowers += n;
     this.totalFlowersCollected += n;
     this._recentCollections.push({ amount: n, time: performance.now() });
@@ -399,6 +418,27 @@ export class GameState {
     return FLOWERS.capacityUpgrade.bonuses[this.capacityLevel - 1];
   }
 
+  // --- Cat Cooldown ---
+
+  getCatOfferInterval() {
+    return CONFIG.cats.cooldownUpgrade.intervals[this.catCooldownLevel];
+  }
+
+  getCatCooldownMaxLevel() {
+    return CONFIG.cats.cooldownUpgrade.prices.length;
+  }
+
+  buyCatCooldown() {
+    const table = CONFIG.cats.cooldownUpgrade.prices;
+    if (this.catCooldownLevel >= table.length) return false;
+    const cost = this.prices['cat-cooldown'];
+    if (!this.spendFlowers(cost)) return false;
+    this.catCooldownLevel++;
+    this._advancePrice('cat-cooldown', this.catCooldownLevel, table);
+    this._notify();
+    return true;
+  }
+
   // --- Powerups ---
 
   collectPowerup(id) {
@@ -494,6 +534,7 @@ export class GameState {
     this.megaFlowerLevel = 0;
     this.mushroomLevel = 0;
     this.capacityLevel = 0;
+    this.catCooldownLevel = 0;
 
     this._initPrices(dev, d);
 

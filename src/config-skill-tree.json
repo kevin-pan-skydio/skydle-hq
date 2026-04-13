@@ -71,6 +71,15 @@
       "desc": "A tuxedo cat who can harvest your entire garden at once",
       "tier": 3,
       "position": "right"
+    },
+    "whiskey": {
+      "cost": 2,
+      "requires": "felix",
+      "icon": "🐾",
+      "label": "Whiskey",
+      "desc": "A fluffy tabby who converts flower income into skill XP",
+      "tier": 3,
+      "position": "far-right"
     }
   },
   "branches": [
@@ -80,6 +89,7 @@
     ["manualHarvest", "felix"],
     ["bloomBoost", "fullBloom"],
     ["freeDrones", "s2Drone"],
-    ["felix", "luna"]
+    ["felix", "luna"],
+    ["felix", "whiskey"]
   ]
 }

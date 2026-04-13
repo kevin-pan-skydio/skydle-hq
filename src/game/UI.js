@@ -79,6 +79,10 @@ export class UI {
     this.skillBarLabelEl = document.getElementById('skill-bar-label');
     this.convertBtn = document.getElementById('convert-flowers-btn');
     this.skillPointsDisplayEl = document.getElementById('skill-points-display');
+
+    this.whiskeyFocusBar = document.getElementById('whiskey-focus-bar');
+    this.whiskeyFocusFill = document.getElementById('whiskey-focus-timer-fill');
+    this.whiskeyFocusTime = document.getElementById('whiskey-focus-time');
     this._lastSkillPoints = 0;
 
     this.dronePopup = document.getElementById('drone-popup');
@@ -289,6 +293,20 @@ export class UI {
         this.showToast('Not enough flowers!');
       }
     });
+
+    this.catCooldownLevelEl = document.getElementById('cat-cooldown-level');
+    this.catCooldownCostEl = document.getElementById('cat-cooldown-cost');
+    document.getElementById('buy-cat-cooldown').addEventListener('click', () => {
+      if (this.state.buyCatCooldown()) {
+        const secs = this.state.getCatOfferInterval();
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        const label = m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`;
+        this.showToast(`🐱 Cat cooldown reduced to ${label}!`);
+      } else {
+        this.showToast('Not enough flowers!');
+      }
+    });
   }
 
   setupDronePopup() {
@@ -366,7 +384,7 @@ export class UI {
       if (e.target.id === 'skill-info-icon') return;
       this.skillOverlay.classList.toggle('hidden');
       if (!this.skillOverlay.classList.contains('hidden')) {
-        this._drawTreeLines();
+        requestAnimationFrame(() => this._drawTreeLines());
       }
     });
 
@@ -633,8 +651,13 @@ export class UI {
           this._executeLunaHarvest(def);
         } else if (def.type === 'felixTreat') {
           const val = this._getFelixTreatValue();
+          const wf = this.state.isWhiskeyFocusActive();
           this.state.addFlowers(val);
-          this.showToast(`+${val.toLocaleString()} 🌸 from ${def.label}!`);
+          this.showToast(wf
+            ? `+★${val.toLocaleString()} skill XP from ${def.label}!`
+            : `+${val.toLocaleString()} 🌸 from ${def.label}!`);
+        } else if (def.type === 'whiskeyFocus') {
+          this._executeWhiskeyFocus(def);
         } else {
           this.showToast(`Used ${def.label}!`);
         }
@@ -663,48 +686,54 @@ export class UI {
           }
         }
       }
+      const wf = this.state.isWhiskeyFocusActive();
       this.state.addFlowers(total);
-      this.showToast(`🌙 Luna harvested ${total.toLocaleString()} 🌸!`);
+      this.showToast(wf
+        ? `🌙 Luna harvested +★${total.toLocaleString()} skill XP!`
+        : `🌙 Luna harvested ${total.toLocaleString()} 🌸!`);
     }, 1000);
+  }
+
+  _executeWhiskeyFocus(def) {
+    const dur = CONFIG.cats.whiskey.powerup.duration;
+    this.state.activateWhiskeyFocus(dur);
+    this.showToast(`⭐ Whiskey's Focus! All income → skill XP for ${dur}s`);
   }
 
   _drawTreeLines() {
     const svg = this.skillTreeLines;
-    const body = document.getElementById('skill-tree-body');
-    const rect = body.getBoundingClientRect();
-    const w = body.scrollWidth;
-    const h = body.scrollHeight;
-    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    svg.style.width = w + 'px';
-    svg.style.height = h + 'px';
+    const container = document.getElementById('skill-tree-nodes');
+    const cw = container.offsetWidth;
+    const ch = container.offsetHeight;
+    svg.setAttribute('viewBox', `0 0 ${cw} ${ch}`);
+    svg.style.width = cw + 'px';
+    svg.style.height = ch + 'px';
     svg.innerHTML = '';
 
-    const scrollX = body.scrollLeft;
-    const scrollY = body.scrollTop;
-    const branches = SKILL_TREE.branches;
+    const ringH = 64;
+    const nodeW = 110;
 
-    for (const [fromId, toId] of branches) {
-      const fromEl = document.querySelector(`.skill-node[data-skill="${fromId}"] .node-ring`);
-      const toEl = document.querySelector(`.skill-node[data-skill="${toId}"] .node-ring`);
-      if (!fromEl || !toEl) continue;
+    function ringCenter(id) {
+      const el = document.querySelector(`.skill-node[data-skill="${id}"]`);
+      if (!el) return null;
+      const style = getComputedStyle(el);
+      const leftPx = parseFloat(style.left);
+      const topPx = parseFloat(style.top);
+      return { x: leftPx, y: topPx + ringH / 2 };
+    }
 
-      const fr = fromEl.getBoundingClientRect();
-      const tr = toEl.getBoundingClientRect();
-      const x1 = fr.left + fr.width / 2 - rect.left + scrollX;
-      const y1 = fr.top + fr.height / 2 - rect.top + scrollY;
-      const x2 = tr.left + tr.width / 2 - rect.left + scrollX;
-      const y2 = tr.top + tr.height / 2 - rect.top + scrollY;
+    for (const [fromId, toId] of SKILL_TREE.branches) {
+      const from = ringCenter(fromId);
+      const to = ringCenter(toId);
+      if (!from || !to) continue;
 
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', x1);
-      line.setAttribute('y1', y1);
-      line.setAttribute('x2', x2);
-      line.setAttribute('y2', y2);
+      line.setAttribute('x1', from.x);
+      line.setAttribute('y1', from.y);
+      line.setAttribute('x2', to.x);
+      line.setAttribute('y2', to.y);
 
-      const fromOwned = this.state.hasPerk(fromId);
-      const toOwned = this.state.hasPerk(toId);
-      if (fromOwned && toOwned) line.classList.add('active');
-
+      if (this.state.hasPerk(fromId) && this.state.hasPerk(toId)) line.classList.add('active');
       svg.appendChild(line);
     }
   }
@@ -886,7 +915,7 @@ export class UI {
 
     const totalPowerups = Object.values(this.state.powerups).reduce((s, q) => s + q, 0);
     this._powerupCount.textContent = totalPowerups;
-    this._powerupBadge.classList.toggle('hidden', !this.state.hasPerk('felix') && !this.state.hasPerk('luna'));
+    this._powerupBadge.classList.toggle('hidden', !this.state.hasPerk('felix') && !this.state.hasPerk('luna') && !this.state.hasPerk('whiskey'));
     this._powerupBadge.classList.toggle('has-items', totalPowerups > 0);
 
     // Buy R1 button
@@ -1090,6 +1119,27 @@ export class UI {
     capBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-capacity') || maxCap);
     if (!maxCap) { const c = capBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['flower-capacity'].toLocaleString() + ' 🌸'; }
 
+    // Cat cooldown upgrade
+    const hasCat = this.state.hasPerk('felix') || this.state.hasPerk('luna') || this.state.hasPerk('whiskey');
+    document.getElementById('cat-upgrades-divider').classList.toggle('hidden', !hasCat);
+    document.getElementById('cat-cooldown-item').classList.toggle('hidden', !hasCat);
+    if (hasCat) {
+      const ccMax = this.state.getCatCooldownMaxLevel();
+      const maxCC = this.state.catCooldownLevel >= ccMax;
+      const curInterval = this.state.getCatOfferInterval();
+      const fmtTime = (s) => { const m = Math.floor(s / 60); const sec = s % 60; return m > 0 ? `${m}:${String(sec).padStart(2, '0')}` : `${sec}s`; };
+      if (maxCC) {
+        this.catCooldownLevelEl.textContent = `${this.state.catCooldownLevel}/${ccMax} — MAX (${fmtTime(curInterval)})`;
+      } else {
+        const nextInterval = CONFIG.cats.cooldownUpgrade.intervals[this.state.catCooldownLevel + 1];
+        this.catCooldownLevelEl.textContent = `${this.state.catCooldownLevel}/${ccMax} — ${fmtTime(curInterval)} → ${fmtTime(nextInterval)}`;
+      }
+      const ccBtn = document.getElementById('buy-cat-cooldown');
+      this._setBtnState(ccBtn, 'cat-cooldown-cost', maxCC);
+      ccBtn.classList.toggle('cannot-afford', !this.state.canAfford('cat-cooldown') || maxCC);
+      if (!maxCC) { const c = ccBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['cat-cooldown'].toLocaleString() + ' 🌸'; }
+    }
+
     // Badges
     if (this.state.spawnSpeedLevel > 0) {
       this.badgeSpawn.classList.remove('hidden');
@@ -1206,6 +1256,16 @@ export class UI {
     this.mapFlowerCountEl.textContent = counts.total;
     this.mapFlowerMaxEl.textContent = counts.max;
     this.mapFlowersEl.classList.toggle('at-cap', counts.total >= counts.max);
+
+    if (this.state.isWhiskeyFocusActive()) {
+      const remaining = Math.max(0, (this.state.whiskeyFocusEnd - performance.now()) / 1000);
+      const dur = CONFIG.cats.whiskey.powerup.duration;
+      this.whiskeyFocusBar.classList.remove('hidden');
+      this.whiskeyFocusFill.style.width = (remaining / dur * 100) + '%';
+      this.whiskeyFocusTime.textContent = Math.ceil(remaining) + 's';
+    } else {
+      this.whiskeyFocusBar.classList.add('hidden');
+    }
 
     if (this.selectedDroneIdx >= 0) {
       this.updatePopupPosition();

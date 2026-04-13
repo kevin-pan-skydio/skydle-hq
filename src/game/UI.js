@@ -6,6 +6,7 @@ const R1 = CONFIG.drones.r1;
 const S2 = CONFIG.drones.s2;
 const UPG = R1.upgrades;
 const S2UPG = S2.upgrades;
+const FLCFG = CONFIG.collectibles.flowers;
 
 export class UI {
   constructor(state, droneManager, flowerManager, camera, renderer) {
@@ -201,35 +202,31 @@ export class UI {
     });
 
     document.getElementById('buy-global-speed').addEventListener('click', () => {
+      const prev = this.state.droneSpeedLevel;
       if (this.state.buyGlobalSpeed()) {
-        this.showToast(`Propeller+ upgraded for all R1s! Lv.${this.state.droneSpeedLevel}`);
-      } else {
-        this.showToast('Not enough flowers!');
-      }
+        this._tierUpToast('Propeller+', UPG.propeller.tiers, prev, this.state.droneSpeedLevel);
+      } else { this.showToast('Not enough flowers!'); }
     });
 
     document.getElementById('buy-global-harvest').addEventListener('click', () => {
+      const prev = this.state.droneHarvestLevel;
       if (this.state.buyGlobalHarvest()) {
-        this.showToast(`Harvester+ upgraded for all R1s! Lv.${this.state.droneHarvestLevel}`);
-      } else {
-        this.showToast('Not enough flowers!');
-      }
+        this._tierUpToast('Harvester+', UPG.harvester.tiers, prev, this.state.droneHarvestLevel);
+      } else { this.showToast('Not enough flowers!'); }
     });
 
     document.getElementById('buy-s2-speed').addEventListener('click', () => {
+      const prev = this.state.s2SpeedLevel;
       if (this.state.buyS2Speed()) {
-        this.showToast(`S2 Propeller+ upgraded! Lv.${this.state.s2SpeedLevel}`);
-      } else {
-        this.showToast('Not enough flowers!');
-      }
+        this._tierUpToast('S2 Propeller+', S2UPG.propeller.tiers, prev, this.state.s2SpeedLevel);
+      } else { this.showToast('Not enough flowers!'); }
     });
 
     document.getElementById('buy-s2-harvest').addEventListener('click', () => {
+      const prev = this.state.s2HarvestLevel;
       if (this.state.buyS2Harvest()) {
-        this.showToast(`S2 Harvester+ upgraded! Lv.${this.state.s2HarvestLevel}`);
-      } else {
-        this.showToast('Not enough flowers!');
-      }
+        this._tierUpToast('S2 Harvester+', S2UPG.harvester.tiers, prev, this.state.s2HarvestLevel);
+      } else { this.showToast('Not enough flowers!'); }
     });
   }
 
@@ -253,21 +250,17 @@ export class UI {
     });
 
     document.getElementById('buy-flower-value').addEventListener('click', () => {
+      const prev = this.state.flowerValueLevel;
       if (this.state.buyFlowerValue()) {
-        const val = this.state.getFlowerBaseValue();
-        this.showToast(`Flower value upgraded! Now ${val} per flower`);
-      } else {
-        this.showToast('Not enough flowers!');
-      }
+        this._tierUpToast('Flower Value', FLCFG.valueUpgrade.tiers, prev, this.state.flowerValueLevel);
+      } else { this.showToast('Not enough flowers!'); }
     });
 
     document.getElementById('buy-flower-multi').addEventListener('click', () => {
+      const prev = this.state.flowerMultiplierLevel;
       if (this.state.buyFlowerMultiplier()) {
-        const mul = this.state.getFlowerMultiplier();
-        this.showToast(`Multiplier upgraded! Now ${mul}x`);
-      } else {
-        this.showToast('Not enough flowers!');
-      }
+        this._tierUpToast('Multiplier', FLCFG.multiplierUpgrade.tiers, prev, this.state.flowerMultiplierLevel);
+      } else { this.showToast('Not enough flowers!'); }
     });
 
     document.getElementById('buy-mega-flower').addEventListener('click', () => {
@@ -580,12 +573,19 @@ export class UI {
     });
   }
 
+  _getFelixTreatValue() {
+    const cfg = CONFIG.cats.felix.powerup;
+    const totalDrones = this.state.dronesOwned + this.state.s2DronesOwned;
+    const t = Math.min(totalDrones / cfg.maxDrones, 1);
+    return Math.round(cfg.baseValue + (cfg.maxValue - cfg.baseValue) * t);
+  }
+
   updatePowerupMenu() {
     const catCfg = CONFIG.cats;
     const DEFS = {};
     for (const [, cat] of Object.entries(catCfg)) {
       const p = cat.powerup;
-      DEFS[p.id] = { icon: p.icon, label: p.label, desc: p.desc, value: p.value };
+      DEFS[p.id] = { icon: p.icon, label: p.label, desc: p.desc, type: p.type };
     }
 
     const entries = Object.entries(this.state.powerups).filter(([, qty]) => qty > 0);
@@ -604,14 +604,19 @@ export class UI {
     this._powerupItems.innerHTML = '';
 
     for (const [id, qty] of entries) {
-      const def = DEFS[id] || { icon: '❓', label: id, desc: '', value: 0 };
+      const def = DEFS[id] || { icon: '❓', label: id, desc: '', type: 'flowers' };
+      let desc = def.desc;
+      if (def.type === 'felixTreat') {
+        const val = this._getFelixTreatValue();
+        desc = `+${val.toLocaleString()} flowers (scales with drones)`;
+      }
       const div = document.createElement('div');
       div.className = 'powerup-item';
       div.innerHTML = `
         <div class="powerup-item-icon">${def.icon}</div>
         <div class="powerup-item-info">
           <div class="powerup-item-name">${def.label}</div>
-          <div class="powerup-item-desc">${def.desc}</div>
+          <div class="powerup-item-desc">${desc}</div>
           <div class="powerup-item-qty">×${qty}</div>
         </div>
         <button class="powerup-use-btn" data-powerup="${id}">Use</button>`;
@@ -622,13 +627,45 @@ export class UI {
       btn.addEventListener('click', () => {
         const pid = btn.dataset.powerup;
         const def = DEFS[pid];
-        if (def && this.state.usePowerup(pid)) {
-          this.state.addFlowers(def.value);
-          this.showToast(`+${def.value.toLocaleString()} 🌸 from ${def.label}!`);
-          this.updatePowerupMenu();
+        if (!def || !this.state.usePowerup(pid)) return;
+
+        if (def.type === 'lunaHarvest') {
+          this._executeLunaHarvest(def);
+        } else if (def.type === 'felixTreat') {
+          const val = this._getFelixTreatValue();
+          this.state.addFlowers(val);
+          this.showToast(`+${val.toLocaleString()} 🌸 from ${def.label}!`);
+        } else {
+          this.showToast(`Used ${def.label}!`);
         }
+        this.updatePowerupMenu();
       });
     });
+  }
+
+  _executeLunaHarvest(def) {
+    this.flowerManager.fillField();
+    this.showToast('🌙 Luna fills the garden...');
+
+    setTimeout(() => {
+      const flowers = [...this.flowerManager.flowers];
+      let total = 0;
+      for (let i = flowers.length - 1; i >= 0; i--) {
+        const f = flowers[i];
+        if (f.spawning) continue;
+        const result = this.flowerManager.collectById(f.id);
+        if (result) {
+          if (result.isMushroom) {
+            const val = this.state.getMushroomFlowerValue();
+            total += val;
+          } else {
+            total += this.state.getCollectionValue(result.value);
+          }
+        }
+      }
+      this.state.addFlowers(total);
+      this.showToast(`🌙 Luna harvested ${total.toLocaleString()} 🌸!`);
+    }, 1000);
   }
 
   _drawTreeLines() {
@@ -796,12 +833,60 @@ export class UI {
     }
   }
 
+  _tierUpToast(name, tiers, prevLvl, newLvl) {
+    const prevTier = tiers?.[prevLvl - 1] || '';
+    const newTier = tiers?.[newLvl - 1] || '';
+    if (newTier && newTier !== prevTier) {
+      this.showToast(`${newTier === 'Ultimate' ? '🌟' : '⬆'} ${newTier} ${name} unlocked!`);
+    } else {
+      this.showToast(`${name} upgraded! Lv.${newLvl}`);
+    }
+  }
+
+  _renderTieredUpgrade(levelEl, btnId, costId, priceKey, lvl, maxLvl, isMaxed, tiers, values, currentVal, fmtVal) {
+    const curTier = tiers?.[lvl - 1] || '';
+    const nextTier = tiers?.[lvl] || '';
+    const isTierUp = !isMaxed && lvl > 0 && nextTier !== curTier;
+    const btn = document.getElementById(btnId);
+
+    btn.classList.remove('tier-up', 'Silver', 'Gold', 'Diamond', 'Ultimate');
+
+    if (isMaxed) {
+      const badge = `<span class="tier-badge ${curTier}">${curTier}</span>`;
+      levelEl.innerHTML = `${lvl}/${maxLvl} — ${badge} MAX — ${fmtVal(currentVal)}`;
+      levelEl.classList.add('has-tier');
+    } else if (lvl === 0) {
+      const nextVal = values[0];
+      levelEl.innerHTML = `0/${maxLvl} — ${fmtVal(currentVal)} → ${fmtVal(nextVal)}`;
+      levelEl.classList.remove('has-tier');
+    } else {
+      const nextVal = values[lvl];
+      const badge = `<span class="tier-badge ${curTier}">${curTier}</span>`;
+
+      if (isTierUp) {
+        const upLabel = `<span class="tier-up-label ${nextTier}">&#x2B06; Upgrade to ${nextTier}!</span>`;
+        levelEl.innerHTML = `${lvl}/${maxLvl} ${badge} ${fmtVal(currentVal)} → ${fmtVal(nextVal)} ${upLabel}`;
+        btn.classList.add('tier-up', nextTier);
+      } else {
+        levelEl.innerHTML = `${lvl}/${maxLvl} ${badge} ${fmtVal(currentVal)} → ${fmtVal(nextVal)}`;
+      }
+      levelEl.classList.add('has-tier');
+    }
+
+    this._setBtnState(btn, costId, isMaxed);
+    btn.classList.toggle('cannot-afford', !this.state.canAfford(priceKey) || isMaxed);
+    if (!isMaxed) {
+      const c = btn.querySelector('.cost');
+      if (c) c.textContent = this.state.prices[priceKey].toLocaleString() + ' 🌸';
+    }
+  }
+
   updateDisplay() {
     this.flowerCountEl.textContent = Math.floor(this.state.flowers).toLocaleString();
 
     const totalPowerups = Object.values(this.state.powerups).reduce((s, q) => s + q, 0);
     this._powerupCount.textContent = totalPowerups;
-    this._powerupBadge.classList.toggle('hidden', !this.state.hasPerk('felix'));
+    this._powerupBadge.classList.toggle('hidden', !this.state.hasPerk('felix') && !this.state.hasPerk('luna'));
     this._powerupBadge.classList.toggle('has-items', totalPowerups > 0);
 
     // Buy R1 button
@@ -850,42 +935,22 @@ export class UI {
     }
 
     const spdLvl = this.state.droneSpeedLevel;
-    const spdMax = UPG.propeller.prices.length;
-    const maxSpd = spdLvl >= spdMax;
     const spdNow = spdLvl === 0 ? R1.baseSpeed : UPG.propeller.speeds[spdLvl - 1];
-    const spdNext = spdLvl < spdMax ? UPG.propeller.speeds[spdLvl] : spdNow;
-    const spdPct = spdLvl > 0 ? Math.round(((spdNow / R1.baseSpeed) - 1) * 100) : 0;
-    const spdTier = UPG.propeller.tiers?.[spdLvl - 1] || '';
-    if (maxSpd) {
-      this.globalSpeedLevelEl.textContent = `${spdLvl}/${spdMax} — MAX (${spdTier}) — ${spdNow} speed (+${spdPct}%)`;
-    } else if (spdLvl === 0) {
-      this.globalSpeedLevelEl.textContent = `0/${spdMax} — ${spdNow} → ${spdNext} speed`;
-    } else {
-      this.globalSpeedLevelEl.textContent = `${spdLvl}/${spdMax} (${spdTier}) — ${spdNow} → ${spdNext} speed (+${spdPct}%)`;
-    }
-    const spdBtn = document.getElementById('buy-global-speed');
-    this._setBtnState(spdBtn, 'global-speed-cost', maxSpd);
-    spdBtn.classList.toggle('cannot-afford', !this.state.canAfford('drone-speed') || maxSpd);
-    if (!maxSpd) { const c = spdBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['drone-speed'].toLocaleString() + ' 🌸'; }
+    this._renderTieredUpgrade(
+      this.globalSpeedLevelEl, 'buy-global-speed', 'global-speed-cost', 'drone-speed',
+      spdLvl, UPG.propeller.prices.length, spdLvl >= UPG.propeller.prices.length,
+      UPG.propeller.tiers, UPG.propeller.speeds,
+      spdNow, (v) => `${v} speed`
+    );
 
     const hvLvl = this.state.droneHarvestLevel;
-    const hvMax = UPG.harvester.prices.length;
     const hvNow = hvLvl === 0 ? R1.baseHarvestTime : UPG.harvester.times[hvLvl - 1];
-    const hvNext = hvLvl < hvMax ? UPG.harvester.times[hvLvl] : hvNow;
-    const hvPct = hvLvl > 0 ? Math.round((1 - hvNow / R1.baseHarvestTime) * 100) : 0;
-    const hvTier = UPG.harvester.tiers?.[hvLvl - 1] || '';
-    const maxHv = hvLvl >= hvMax;
-    if (maxHv) {
-      this.globalHarvestLevelEl.textContent = `${hvLvl}/${hvMax} — MAX (${hvTier}) — ${hvNow}s harvest (-${hvPct}%)`;
-    } else if (hvLvl === 0) {
-      this.globalHarvestLevelEl.textContent = `0/${hvMax} — ${hvNow}s → ${hvNext}s harvest`;
-    } else {
-      this.globalHarvestLevelEl.textContent = `${hvLvl}/${hvMax} (${hvTier}) — ${hvNow}s → ${hvNext}s harvest (-${hvPct}%)`;
-    }
-    const hvBtn = document.getElementById('buy-global-harvest');
-    this._setBtnState(hvBtn, 'global-harvest-cost', maxHv);
-    hvBtn.classList.toggle('cannot-afford', !this.state.canAfford('drone-harvest') || maxHv);
-    if (!maxHv) { const c = hvBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['drone-harvest'].toLocaleString() + ' 🌸'; }
+    this._renderTieredUpgrade(
+      this.globalHarvestLevelEl, 'buy-global-harvest', 'global-harvest-cost', 'drone-harvest',
+      hvLvl, UPG.harvester.prices.length, hvLvl >= UPG.harvester.prices.length,
+      UPG.harvester.tiers, UPG.harvester.times,
+      hvNow, (v) => `${v}s harvest`
+    );
 
     // S2 upgrades — visible only with s2Drone perk
     const hasS2Perk = this.state.hasPerk('s2Drone');
@@ -898,53 +963,28 @@ export class UI {
       s2HarvestItem.classList.remove('hidden');
 
       const s2sLvl = this.state.s2SpeedLevel;
-      const s2sMaxLvl = S2UPG.propeller.prices.length;
-      const s2sMax = s2sLvl >= s2sMaxLvl;
-      const s2BaseSpd = R1.baseSpeed * S2.baseSpeedMultiplier;
-      const s2sNow = s2sLvl === 0 ? s2BaseSpd : S2UPG.propeller.speeds[s2sLvl - 1];
-      const s2sNext = s2sLvl < s2sMaxLvl ? S2UPG.propeller.speeds[s2sLvl] : s2sNow;
-      const s2sPct = s2sLvl > 0 ? Math.round(((s2sNow / s2BaseSpd) - 1) * 100) : 0;
-      const s2sTier = S2UPG.propeller.tiers?.[s2sLvl - 1] || '';
-      const s2SpeedLevelEl = document.getElementById('s2-speed-level');
-      if (s2sMax) {
-        s2SpeedLevelEl.textContent = `${s2sLvl}/${s2sMaxLvl} — MAX (${s2sTier}) — ${s2sNow} speed (+${s2sPct}%)`;
-      } else if (s2sLvl === 0) {
-        s2SpeedLevelEl.textContent = `0/${s2sMaxLvl} — ${s2sNow} → ${s2sNext} speed`;
-      } else {
-        s2SpeedLevelEl.textContent = `${s2sLvl}/${s2sMaxLvl} (${s2sTier}) — ${s2sNow} → ${s2sNext} speed (+${s2sPct}%)`;
-      }
-      const s2SpdBtn = document.getElementById('buy-s2-speed');
-      this._setBtnState(s2SpdBtn, 's2-speed-cost', s2sMax);
-      s2SpdBtn.classList.toggle('cannot-afford', !this.state.canAfford('s2-speed') || s2sMax);
-      if (!s2sMax) { const c = s2SpdBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['s2-speed'].toLocaleString() + ' 🌸'; }
+      const s2sNow = s2sLvl === 0 ? R1.baseSpeed * S2.baseSpeedMultiplier : S2UPG.propeller.speeds[s2sLvl - 1];
+      this._renderTieredUpgrade(
+        document.getElementById('s2-speed-level'), 'buy-s2-speed', 's2-speed-cost', 's2-speed',
+        s2sLvl, S2UPG.propeller.prices.length, s2sLvl >= S2UPG.propeller.prices.length,
+        S2UPG.propeller.tiers, S2UPG.propeller.speeds,
+        s2sNow, (v) => `${v} speed`
+      );
 
       const s2hLvl = this.state.s2HarvestLevel;
-      const s2hMaxLvl = S2UPG.harvester.prices.length;
-      const s2BaseHt = R1.baseHarvestTime / S2.baseHarvestDivisor;
-      const s2hNow = s2hLvl === 0 ? s2BaseHt : S2UPG.harvester.times[s2hLvl - 1];
-      const s2hNext = s2hLvl < s2hMaxLvl ? S2UPG.harvester.times[s2hLvl] : s2hNow;
-      const s2hPct = s2hLvl > 0 ? Math.round((1 - s2hNow / s2BaseHt) * 100) : 0;
-      const s2hTier = S2UPG.harvester.tiers?.[s2hLvl - 1] || '';
-      const maxS2h = s2hLvl >= s2hMaxLvl;
-      const s2HarvestLevelEl = document.getElementById('s2-harvest-level');
-      if (maxS2h) {
-        s2HarvestLevelEl.textContent = `${s2hLvl}/${s2hMaxLvl} — MAX (${s2hTier}) — ${s2hNow}s harvest (-${s2hPct}%)`;
-      } else if (s2hLvl === 0) {
-        s2HarvestLevelEl.textContent = `0/${s2hMaxLvl} — ${s2hNow}s → ${s2hNext}s harvest`;
-      } else {
-        s2HarvestLevelEl.textContent = `${s2hLvl}/${s2hMaxLvl} (${s2hTier}) — ${s2hNow}s → ${s2hNext}s harvest (-${s2hPct}%)`;
-      }
-      const s2HvBtn = document.getElementById('buy-s2-harvest');
-      this._setBtnState(s2HvBtn, 's2-harvest-cost', maxS2h);
-      s2HvBtn.classList.toggle('cannot-afford', !this.state.canAfford('s2-harvest') || maxS2h);
-      if (!maxS2h) { const c = s2HvBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['s2-harvest'].toLocaleString() + ' 🌸'; }
+      const s2hNow = s2hLvl === 0 ? R1.baseHarvestTime / S2.baseHarvestDivisor : S2UPG.harvester.times[s2hLvl - 1];
+      this._renderTieredUpgrade(
+        document.getElementById('s2-harvest-level'), 'buy-s2-harvest', 's2-harvest-cost', 's2-harvest',
+        s2hLvl, S2UPG.harvester.prices.length, s2hLvl >= S2UPG.harvester.prices.length,
+        S2UPG.harvester.tiers, S2UPG.harvester.times,
+        s2hNow, (v) => `${v}s harvest`
+      );
     } else {
       s2Divider.classList.add('hidden');
       s2SpeedItem.classList.add('hidden');
       s2HarvestItem.classList.add('hidden');
     }
 
-    const FLCFG = CONFIG.collectibles.flowers;
     const interval = this.state.getSpawnInterval();
     const spawnMax = this.state.getSpawnSpeedMaxLevel();
     const maxSpawn = this.state.spawnSpeedLevel >= spawnMax;
@@ -977,35 +1017,29 @@ export class UI {
     batchBtn.classList.toggle('cannot-afford', !this.state.canAfford('spawn-batch') || maxBatch);
     if (!maxBatch) { const c = batchBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['spawn-batch'].toLocaleString() + ' 🌸'; }
 
-    // Flower value upgrade
+    // Flower value upgrade (tiered)
+    const fvLvl = this.state.flowerValueLevel;
     const flowerVal = this.state.getFlowerBaseValue();
     const valueMax = this.state.getFlowerValueMaxLevel();
-    const maxValue = this.state.flowerValueLevel >= valueMax;
-    if (maxValue) {
-      this.valueLevelEl.textContent = `${this.state.flowerValueLevel}/${valueMax} — MAX`;
-    } else {
-      const flowerValNext = FLCFG.valueUpgrade.values[this.state.flowerValueLevel];
-      this.valueLevelEl.textContent = `${this.state.flowerValueLevel}/${valueMax} — ${flowerVal} → ${flowerValNext} per flower`;
-    }
-    const valueBtn = document.getElementById('buy-flower-value');
-    this._setBtnState(valueBtn, 'flower-value-cost', maxValue);
-    valueBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-value') || maxValue);
-    if (!maxValue) { const c = valueBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['flower-value'].toLocaleString() + ' 🌸'; }
+    const maxValue = fvLvl >= valueMax;
+    this._renderTieredUpgrade(
+      this.valueLevelEl, 'buy-flower-value', 'flower-value-cost', 'flower-value',
+      fvLvl, valueMax, maxValue,
+      FLCFG.valueUpgrade.tiers, FLCFG.valueUpgrade.values,
+      flowerVal, (v) => `${v} per flower`
+    );
 
-    // Multiplier upgrade
+    // Multiplier upgrade (tiered)
+    const fmLvl = this.state.flowerMultiplierLevel;
     const flowerMul = this.state.getFlowerMultiplier();
     const multiMax = this.state.getFlowerMultiplierMaxLevel();
-    const maxMulti = this.state.flowerMultiplierLevel >= multiMax;
-    if (maxMulti) {
-      this.multiLevelEl.textContent = `${this.state.flowerMultiplierLevel}/${multiMax} — MAX`;
-    } else {
-      const flowerMulNext = FLCFG.multiplierUpgrade.multipliers[this.state.flowerMultiplierLevel];
-      this.multiLevelEl.textContent = `${this.state.flowerMultiplierLevel}/${multiMax} — ${flowerMul}x → ${flowerMulNext}x`;
-    }
-    const multiBtn = document.getElementById('buy-flower-multi');
-    this._setBtnState(multiBtn, 'flower-multi-cost', maxMulti);
-    multiBtn.classList.toggle('cannot-afford', !this.state.canAfford('flower-multi') || maxMulti);
-    if (!maxMulti) { const c = multiBtn.querySelector('.cost'); if (c) c.textContent = this.state.prices['flower-multi'].toLocaleString() + ' 🌸'; }
+    const maxMulti = fmLvl >= multiMax;
+    this._renderTieredUpgrade(
+      this.multiLevelEl, 'buy-flower-multi', 'flower-multi-cost', 'flower-multi',
+      fmLvl, multiMax, maxMulti,
+      FLCFG.multiplierUpgrade.tiers, FLCFG.multiplierUpgrade.multipliers,
+      flowerMul, (v) => `${v}x`
+    );
 
     // Mega flower upgrade
     const chance = Math.round(this.state.getMegaFlowerChance() * 100);

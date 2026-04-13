@@ -62,6 +62,15 @@
       "desc": "Unlock the S2 drone — 2× base speed and harvest of the R1",
       "tier": 3,
       "position": "center-left"
+    },
+    "luna": {
+      "cost": 2,
+      "requires": "felix",
+      "icon": "🌙",
+      "label": "Luna",
+      "desc": "A tuxedo cat who can harvest your entire garden at once",
+      "tier": 3,
+      "position": "right"
     }
   },
   "branches": [
@@ -70,6 +79,7 @@
     ["manualHarvest", "beehive"],
     ["manualHarvest", "felix"],
     ["bloomBoost", "fullBloom"],
-    ["freeDrones", "s2Drone"]
+    ["freeDrones", "s2Drone"],
+    ["felix", "luna"]
   ]
 }

@@ -2,10 +2,6 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import CONFIG from '../config.json';
 
-const CAT_CFG = CONFIG.cats.felix;
-const BHV = CAT_CFG.behavior;
-const PUP = CAT_CFG.powerup;
-
 const _color = new THREE.Color();
 
 function vc(geo, hex) {
@@ -21,6 +17,7 @@ function vc(geo, hex) {
   return geo;
 }
 
+// Felix palette (orange tabby)
 const ORANGE = 0xe88830;
 const STRIPE = 0xa05818;
 const CREAM = 0xf0c890;
@@ -29,10 +26,15 @@ const EYE_GREEN = 0x55cc44;
 const NOSE_PINK = 0xd06070;
 const PUPIL = 0x111111;
 
+// Luna palette (tuxedo)
+const BLACK = 0x222222;
+const TUX_WHITE = 0xf0f0f0;
+const TUX_GRAY = 0x444444;
+const EYE_GOLD = 0xddaa22;
+
 const S = 2.25;
 
-function buildCatModel() {
-  const group = new THREE.Group();
+function buildFelixModel() {
   const parts = [];
 
   const body = new THREE.BoxGeometry(0.35 * S, 0.28 * S, 0.55 * S);
@@ -132,13 +134,138 @@ function buildCatModel() {
   t3.translate(0, 0.54 * S, 0.56 * S);
   parts.push(vc(t3, ORANGE));
 
+  return parts;
+}
+
+function buildLunaModel() {
+  const parts = [];
+
+  // Body — mostly white with black patches
+  const body = new THREE.BoxGeometry(0.35 * S, 0.28 * S, 0.55 * S);
+  body.translate(0, 0.28 * S, 0);
+  parts.push(vc(body, TUX_WHITE));
+
+  // Black saddle patch on back
+  const saddle = new THREE.BoxGeometry(0.30 * S, 0.04 * S, 0.28 * S);
+  saddle.translate(0, 0.43 * S, 0.05 * S);
+  parts.push(vc(saddle, BLACK));
+
+  // Smaller black patch offset on back-right
+  const patch1 = new THREE.BoxGeometry(0.14 * S, 0.04 * S, 0.14 * S);
+  patch1.translate(0.08 * S, 0.43 * S, -0.12 * S);
+  parts.push(vc(patch1, BLACK));
+
+  // White belly
+  const belly = new THREE.BoxGeometry(0.26 * S, 0.07 * S, 0.5 * S);
+  belly.translate(0, 0.15 * S, -0.02 * S);
+  parts.push(vc(belly, TUX_WHITE));
+
+  // Head — black top, white chin/muzzle (kept the same)
+  const head = new THREE.BoxGeometry(0.32 * S, 0.28 * S, 0.28 * S);
+  head.translate(0, 0.38 * S, -0.38 * S);
+  parts.push(vc(head, BLACK));
+
+  const muzzle = new THREE.BoxGeometry(0.18 * S, 0.12 * S, 0.06 * S);
+  muzzle.translate(0, 0.30 * S, -0.52 * S);
+  parts.push(vc(muzzle, TUX_WHITE));
+
+  const blaze = new THREE.BoxGeometry(0.06 * S, 0.10 * S, 0.01 * S);
+  blaze.translate(0, 0.38 * S, -0.52 * S);
+  parts.push(vc(blaze, TUX_WHITE));
+
+  // Ears — black with pink insides
+  const earL = new THREE.BoxGeometry(0.1 * S, 0.12 * S, 0.06 * S);
+  earL.translate(-0.12 * S, 0.56 * S, -0.38 * S);
+  parts.push(vc(earL, BLACK));
+  const earR = new THREE.BoxGeometry(0.1 * S, 0.12 * S, 0.06 * S);
+  earR.translate(0.12 * S, 0.56 * S, -0.38 * S);
+  parts.push(vc(earR, BLACK));
+
+  const earInL = new THREE.BoxGeometry(0.05 * S, 0.07 * S, 0.02 * S);
+  earInL.translate(-0.12 * S, 0.56 * S, -0.41 * S);
+  parts.push(vc(earInL, PINK));
+  const earInR = new THREE.BoxGeometry(0.05 * S, 0.07 * S, 0.02 * S);
+  earInR.translate(0.12 * S, 0.56 * S, -0.41 * S);
+  parts.push(vc(earInR, PINK));
+
+  // Golden eyes
+  const eyeL = new THREE.BoxGeometry(0.06 * S, 0.06 * S, 0.02 * S);
+  eyeL.translate(-0.08 * S, 0.40 * S, -0.52 * S);
+  parts.push(vc(eyeL, EYE_GOLD));
+  const eyeR = new THREE.BoxGeometry(0.06 * S, 0.06 * S, 0.02 * S);
+  eyeR.translate(0.08 * S, 0.40 * S, -0.52 * S);
+  parts.push(vc(eyeR, EYE_GOLD));
+
+  const pupilL = new THREE.BoxGeometry(0.025 * S, 0.05 * S, 0.01 * S);
+  pupilL.translate(-0.08 * S, 0.40 * S, -0.53 * S);
+  parts.push(vc(pupilL, PUPIL));
+  const pupilR = new THREE.BoxGeometry(0.025 * S, 0.05 * S, 0.01 * S);
+  pupilR.translate(0.08 * S, 0.40 * S, -0.53 * S);
+  parts.push(vc(pupilR, PUPIL));
+
+  // Pink nose
+  const nose = new THREE.BoxGeometry(0.04 * S, 0.03 * S, 0.02 * S);
+  nose.translate(0, 0.34 * S, -0.52 * S);
+  parts.push(vc(nose, NOSE_PINK));
+
+  // Legs — white with one black front-left leg (patchy)
+  const legGeo = () => new THREE.BoxGeometry(0.1 * S, 0.16 * S, 0.1 * S);
+  const fl = legGeo(); fl.translate(-0.11 * S, 0.08 * S, -0.18 * S);
+  parts.push(vc(fl, BLACK));
+  const fr = legGeo(); fr.translate(0.11 * S, 0.08 * S, -0.18 * S);
+  parts.push(vc(fr, TUX_WHITE));
+  const bl = legGeo(); bl.translate(-0.11 * S, 0.08 * S, 0.18 * S);
+  parts.push(vc(bl, TUX_WHITE));
+  const br = legGeo(); br.translate(0.11 * S, 0.08 * S, 0.18 * S);
+  parts.push(vc(br, TUX_WHITE));
+
+  // White paws
+  const pawGeo = () => new THREE.BoxGeometry(0.1 * S, 0.04 * S, 0.12 * S);
+  const pfl = pawGeo(); pfl.translate(-0.11 * S, 0.02 * S, -0.18 * S);
+  parts.push(vc(pfl, TUX_WHITE));
+  const pfr = pawGeo(); pfr.translate(0.11 * S, 0.02 * S, -0.18 * S);
+  parts.push(vc(pfr, TUX_WHITE));
+  const pbl = pawGeo(); pbl.translate(-0.11 * S, 0.02 * S, 0.18 * S);
+  parts.push(vc(pbl, TUX_WHITE));
+  const pbr = pawGeo(); pbr.translate(0.11 * S, 0.02 * S, 0.18 * S);
+  parts.push(vc(pbr, TUX_WHITE));
+
+  // Tail — white base, black tip
+  const t1 = new THREE.BoxGeometry(0.08 * S, 0.08 * S, 0.2 * S);
+  t1.translate(0, 0.32 * S, 0.35 * S);
+  parts.push(vc(t1, TUX_WHITE));
+  const t2 = new THREE.BoxGeometry(0.07 * S, 0.07 * S, 0.16 * S);
+  t2.translate(0, 0.42 * S, 0.48 * S);
+  parts.push(vc(t2, TUX_WHITE));
+  const t3 = new THREE.BoxGeometry(0.06 * S, 0.06 * S, 0.12 * S);
+  t3.translate(0, 0.54 * S, 0.56 * S);
+  parts.push(vc(t3, BLACK));
+
+  return parts;
+}
+
+const MODEL_BUILDERS = { felix: buildFelixModel, luna: buildLunaModel };
+
+function buildCatMesh(catKey) {
+  const group = new THREE.Group();
+  const parts = MODEL_BUILDERS[catKey]();
   const merged = mergeGeometries(parts);
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
   const mesh = new THREE.Mesh(merged, mat);
   mesh.castShadow = true;
   group.add(mesh);
-
   return group;
+}
+
+function buildOfferGlow() {
+  const geo = new THREE.RingGeometry(0.7 * S, 0.85 * S, 24);
+  geo.rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0xffdd00, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide,
+  });
+  const ring = new THREE.Mesh(geo, mat);
+  ring.visible = false;
+  return ring;
 }
 
 function rand(min, max) {
@@ -174,10 +301,18 @@ function buildOfferSprite() {
 }
 
 export class CatManager {
-  constructor(scene, state, world) {
+  constructor(scene, state, world, catKey) {
     this.scene = scene;
     this.state = state;
     this.world = world;
+    this.catKey = catKey;
+
+    const cfg = CONFIG.cats[catKey];
+    this._cfg = cfg;
+    this._bhv = cfg.behavior;
+    this._pup = cfg.powerup;
+    this._perkName = cfg.perk;
+
     this.mesh = null;
     this.active = false;
 
@@ -186,14 +321,14 @@ export class CatManager {
     this._walkTime = 0;
     this._groomTime = 0;
     this._facingAngle = 0;
-    this._speed = CAT_CFG.speed;
+    this._speed = cfg.speed;
 
     this._targetX = 0;
     this._targetZ = 0;
 
     this._offerSprite = null;
-    this._offerBobTime = 0;
-    this._behaviorsSinceOffer = 0;
+    this._offerGlow = null;
+    this._offerCooldown = cfg.powerup.offerInterval;
 
     this._computeBounds();
   }
@@ -201,12 +336,7 @@ export class CatManager {
   _computeBounds() {
     const gs = this.world.gridSize;
     const offset = ((gs - 1) * STEP) / 2;
-
-    // Outermost dock tile centers are at row/col -1 and gs
-    // Their outer edge is center ± TILE_SIZE/2
     const dockOuterEdge = gs * STEP - offset + TILE_SIZE / 2;
-
-    // Wander band starts just past dock edge, extends 2 block-widths out
     const gap = STEP * 0.25;
     this._innerEdge = dockOuterEdge + gap;
     this._outerEdge = dockOuterEdge + gap + STEP * 2;
@@ -215,30 +345,23 @@ export class CatManager {
   _randomPointInBand() {
     const inner = this._innerEdge;
     const outer = this._outerEdge;
-    const bandWidth = outer - inner;
 
-    // 4 sides: top(-z), bottom(+z), left(-x), right(+x)
-    // Side strips span the full outer width; corners belong to top/bottom
     const topBottomLen = outer * 2;
-    const leftRightLen = (outer - inner) * 0 + (inner * 2);
+    const leftRightLen = inner * 2;
     const totalWeight = (topBottomLen + leftRightLen) * 2;
     let r = Math.random() * totalWeight;
 
     if (r < topBottomLen) {
-      // Top side: x spans full width, z in band
       return { x: rand(-outer, outer), z: -rand(inner, outer) };
     }
     r -= topBottomLen;
     if (r < topBottomLen) {
-      // Bottom side
       return { x: rand(-outer, outer), z: rand(inner, outer) };
     }
     r -= topBottomLen;
     if (r < leftRightLen) {
-      // Left side: z only within inner range (corners handled by top/bottom)
       return { x: -rand(inner, outer), z: rand(-inner, inner) };
     }
-    // Right side
     return { x: rand(inner, outer), z: rand(-inner, inner) };
   }
 
@@ -258,13 +381,12 @@ export class CatManager {
   }
 
   _pickNextBehavior() {
-    this._behaviorsSinceOffer++;
+    const BHV = this._bhv;
 
-    const [minOffer, maxOffer] = PUP.behaviorsBeforeOffer;
-    if (this._behaviorsSinceOffer >= minOffer + Math.floor(Math.random() * (maxOffer - minOffer + 1))) {
+    if (this._offerCooldown <= 0) {
       this._behavior = STATE_OFFERING;
-      this._stateTimer = rand(PUP.offerDuration[0], PUP.offerDuration[1]);
-      this._behaviorsSinceOffer = 0;
+      this._stateTimer = this._pup.offerDuration;
+      this._offerCooldown = this._pup.offerInterval;
       this._showOfferSprite();
       return;
     }
@@ -290,11 +412,17 @@ export class CatManager {
       this.scene.add(this._offerSprite);
     }
     this._offerSprite.visible = true;
-    this._offerBobTime = 0;
+
+    if (!this._offerGlow) {
+      this._offerGlow = buildOfferGlow();
+      this.scene.add(this._offerGlow);
+    }
+    this._offerGlow.visible = true;
   }
 
   _hideOfferSprite() {
     if (this._offerSprite) this._offerSprite.visible = false;
+    if (this._offerGlow) this._offerGlow.visible = false;
   }
 
   get hasOffering() {
@@ -306,8 +434,8 @@ export class CatManager {
     this._hideOfferSprite();
     this._behavior = STATE_SIT;
     this._stateTimer = rand(2, 4);
-    this.state.collectPowerup(PUP.id);
-    return PUP;
+    this.state.collectPowerup(this._pup.id);
+    return this._pup;
   }
 
   getClickTargets() {
@@ -320,7 +448,7 @@ export class CatManager {
     this.active = true;
 
     if (!this.mesh) {
-      this.mesh = buildCatModel();
+      this.mesh = buildCatMesh(this.catKey);
     }
 
     const startPt = this._randomPointInBand();
@@ -349,18 +477,22 @@ export class CatManager {
 
   reset() {
     this.despawn();
-    this._behaviorsSinceOffer = 0;
+    this._offerCooldown = this._pup.offerInterval;
   }
 
   update(dt) {
     if (!this.active) {
-      if (this.state.hasPerk('felix')) this.spawn();
+      if (this.state.hasPerk(this._perkName)) this.spawn();
       return;
     }
 
-    if (!this.state.hasPerk('felix')) {
+    if (!this.state.hasPerk(this._perkName)) {
       this.despawn();
       return;
+    }
+
+    if (this._behavior !== STATE_OFFERING) {
+      this._offerCooldown -= dt;
     }
 
     this._stateTimer -= dt;
@@ -397,7 +529,6 @@ export class CatManager {
     x = Math.max(-outer, Math.min(outer, x));
     z = Math.max(-outer, Math.min(outer, z));
 
-    // If both axes are inside inner, push the closer one out to inner
     if (Math.abs(x) < inner && Math.abs(z) < inner) {
       if (Math.abs(x) > Math.abs(z)) {
         x = x >= 0 ? inner : -inner;
@@ -452,16 +583,16 @@ export class CatManager {
     }
   }
 
-  _updateOffering(dt) {
+  _updateOffering() {
     this.mesh.position.y = 0;
+    const x = this.mesh.position.x;
+    const z = this.mesh.position.z;
+
     if (this._offerSprite) {
-      this._offerBobTime += dt;
-      const bobY = this.mesh.position.y + 1.6 * S + Math.sin(this._offerBobTime * 3) * 0.15;
-      this._offerSprite.position.set(
-        this.mesh.position.x,
-        bobY,
-        this.mesh.position.z
-      );
+      this._offerSprite.position.set(x, 1.05 * S, z);
+    }
+    if (this._offerGlow) {
+      this._offerGlow.position.set(x, 0.02, z);
     }
   }
 }

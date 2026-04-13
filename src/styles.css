@@ -1366,6 +1366,135 @@ body.placement-mode::before {
   margin-top: 2px;
 }
 
+.item-owned.has-tier {
+  opacity: 0.7;
+}
+
+.tier-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.tier-badge.Bronze {
+  background: rgba(205, 127, 50, 0.3);
+  color: #d4964a;
+}
+
+.tier-badge.Silver {
+  background: rgba(192, 192, 192, 0.25);
+  color: #c8c8c8;
+}
+
+.tier-badge.Gold {
+  background: rgba(255, 215, 0, 0.25);
+  color: #ffd740;
+}
+
+.tier-badge.Diamond {
+  background: rgba(120, 200, 255, 0.25);
+  color: #78c8ff;
+}
+
+.tier-badge.Ultimate {
+  background: linear-gradient(135deg, rgba(255, 100, 200, 0.35), rgba(120, 100, 255, 0.35));
+  color: #e8b0ff;
+}
+
+.tier-up-label {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  margin-left: 2px;
+  animation: tierUpPulse 1.5s ease-in-out infinite;
+}
+
+.tier-up-label.Silver {
+  background: rgba(192, 192, 192, 0.2);
+  color: #d0d0d0;
+  border: 1px solid rgba(192, 192, 192, 0.35);
+}
+
+.tier-up-label.Gold {
+  background: rgba(255, 215, 0, 0.15);
+  color: #ffd740;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+}
+
+.tier-up-label.Diamond {
+  background: rgba(120, 200, 255, 0.15);
+  color: #78c8ff;
+  border: 1px solid rgba(120, 200, 255, 0.35);
+}
+
+.tier-up-label.Ultimate {
+  background: linear-gradient(135deg, rgba(255, 100, 200, 0.2), rgba(120, 100, 255, 0.2));
+  color: #e8b0ff;
+  border: 1px solid rgba(200, 150, 255, 0.45);
+  animation: tierUpUltimate 2s ease-in-out infinite;
+}
+
+@keyframes tierUpPulse {
+
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes tierUpUltimate {
+
+  0%,
+  100% {
+    opacity: 0.85;
+    box-shadow: 0 0 6px rgba(200, 150, 255, 0.15);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 14px rgba(200, 150, 255, 0.4);
+  }
+}
+
+.buy-btn.tier-up {
+  border-color: rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
+}
+
+.buy-btn.tier-up.Silver {
+  border-color: rgba(192, 192, 192, 0.5);
+  box-shadow: 0 0 8px rgba(192, 192, 192, 0.2);
+}
+
+.buy-btn.tier-up.Gold {
+  border-color: rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
+}
+
+.buy-btn.tier-up.Diamond {
+  border-color: rgba(120, 200, 255, 0.5);
+  box-shadow: 0 0 8px rgba(120, 200, 255, 0.2);
+}
+
+.buy-btn.tier-up.Ultimate {
+  border-color: rgba(200, 150, 255, 0.6);
+  box-shadow: 0 0 12px rgba(200, 150, 255, 0.3);
+  animation: tierUpUltimate 2s ease-in-out infinite;
+}
+
 .shop-item.dock-mega {
   margin-top: 8px;
   border-top: 1px solid rgba(255, 200, 50, 0.2);
